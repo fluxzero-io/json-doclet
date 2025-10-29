@@ -3,7 +3,12 @@ plugins {
 }
 
 group = "io.fluxzero"
-version = "0.1.0-SNAPSHOT"
+
+val resolvedVersion: String = (findProperty("releaseVersion")?.toString()
+        ?: System.getenv("RELEASE_VERSION")
+        ?: "0.1.0-SNAPSHOT")
+
+version = resolvedVersion
 
 java {
     toolchain {

@@ -25,6 +25,28 @@ JSON Doclet is a custom [Javadoc doclet](https://docs.oracle.com/javase/8/docs/t
 
 The build produces a jar containing the doclet under `build/libs/`.
 
+### GitHub Releases
+
+Commits on `main` trigger a GitHub Actions workflow that:
+
+- Analyses commits with `mathieudutour/github-tag-action`, bumping the patch version by default and the minor version when a `feat:` commit has landed since the previous release.
+- Builds the jar with that version embedded.
+- Creates a Git tag and GitHub Release containing the changelog and attaches the jar as an asset.
+
+You can download the latest release from the **Releases** page or programmatically in other workflows, for example:
+
+```yaml
+- name: Download latest JSON Doclet
+  uses: robinraju/release-downloader@v1
+  with:
+    repository: <owner>/json-doclet
+    latest: true
+    fileName: json-doclet-*.jar
+    out-file-path: ./lib
+```
+
+To run locally with a specific version, grab the jar from the release and invoke `javadoc` as shown below.
+
 ### Running the Doclet
 
 Invoke the JDK `javadoc` tool and point it at the doclet jar:

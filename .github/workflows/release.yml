@@ -1,0 +1,139 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  determine-version:
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.prepare.outputs.release_version }}
+      new_tag: ${{ steps.prepare.outputs.new_tag }}
+      changelog: ${{ steps.prepare.outputs.changelog }}
+      skipped: ${{ steps.prepare.outputs.skipped }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine next version (dry run)
+        id: bump
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dry_run: true
+          default_bump: patch
+          custom_release_rules: '[{"type":"feat","release":"minor"}]'
+          release_branches: main
+
+      - name: Prepare version outputs
+        id: prepare
+        env:
+          NEW_TAG: ${{ steps.bump.outputs.new_tag }}
+          PREVIOUS_TAG: ${{ steps.bump.outputs.tag }}
+          NEW_VERSION: ${{ steps.bump.outputs.new_version }}
+          CHANGELOG: ${{ steps.bump.outputs.changelog }}
+        run: |
+          set -eo pipefail
+          new_tag="$NEW_TAG"
+          if [ -z "$new_tag" ]; then
+            new_tag="v$NEW_VERSION"
+          fi
+          release_version="$NEW_VERSION"
+          if [ -z "$release_version" ]; then
+            echo "No new version detected" >&2
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$new_tag" = "$PREVIOUS_TAG" ]; then
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
+            echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+            echo "changelog=" >> "$GITHUB_OUTPUT"
+          else
+            echo "skipped=false" >> "$GITHUB_OUTPUT"
+            echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
+            echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+            printf 'changelog<<EOF\n%s\nEOF\n' "$CHANGELOG" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: determine-version
+    if: needs.determine-version.outputs.skipped != 'true'
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ needs.determine-version.outputs.release_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Build project
+        run: ./gradlew clean build -PreleaseVersion=$RELEASE_VERSION
+
+      - name: Locate jar
+        id: locate
+        run: |
+          set -eo pipefail
+          JAR=$(ls build/libs/json-doclet-*.jar | grep "$RELEASE_VERSION" | head -n 1)
+          if [ -z "$JAR" ]; then
+            echo "Jar for version $RELEASE_VERSION not found" >&2
+            exit 1
+          fi
+          echo "jar=$JAR" >> "$GITHUB_OUTPUT"
+
+      - name: Upload jar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: json-doclet-jar
+          path: ${{ steps.locate.outputs.jar }}
+
+  release:
+    needs: [determine-version, build]
+    if: needs.determine-version.outputs.skipped != 'true'
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ needs.determine-version.outputs.release_version }}
+      RELEASE_TAG: ${{ needs.determine-version.outputs.new_tag }}
+      CHANGELOG: ${{ needs.determine-version.outputs.changelog }}
+    steps:
+      - name: Download jar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: json-doclet-jar
+          path: dist
+
+      - name: Locate downloaded jar
+        id: locate
+        run: |
+          set -eo pipefail
+          JAR=$(ls dist/json-doclet-*.jar | head -n 1)
+          if [ -z "$JAR" ]; then
+            echo "Downloaded jar not found" >&2
+            exit 1
+          fi
+          echo "jar=$JAR" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release and attach jar
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }}
+          body: ${{ env.CHANGELOG }}
+          files: ${{ steps.locate.outputs.jar }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
