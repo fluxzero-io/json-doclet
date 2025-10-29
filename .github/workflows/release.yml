@@ -87,9 +87,10 @@ jobs:
         id: locate
         run: |
           set -eo pipefail
-          JAR=$(ls build/libs/json-doclet-*.jar | grep "$RELEASE_VERSION" | head -n 1)
-          if [ -z "$JAR" ]; then
-            echo "Jar for version $RELEASE_VERSION not found" >&2
+          JAR="build/libs/json-doclet-${RELEASE_VERSION}.jar"
+          if [ ! -f "$JAR" ]; then
+            echo "Expected jar $JAR not found" >&2
+            ls build/libs
             exit 1
           fi
           echo "jar=$JAR" >> "$GITHUB_OUTPUT"
@@ -119,9 +120,10 @@ jobs:
         id: locate
         run: |
           set -eo pipefail
-          JAR=$(ls dist/json-doclet-*.jar | head -n 1)
-          if [ -z "$JAR" ]; then
-            echo "Downloaded jar not found" >&2
+          JAR="dist/json-doclet-${RELEASE_VERSION}.jar"
+          if [ ! -f "$JAR" ]; then
+            echo "Downloaded jar $JAR not found" >&2
+            ls dist
             exit 1
           fi
           echo "jar=$JAR" >> "$GITHUB_OUTPUT"

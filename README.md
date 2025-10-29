@@ -99,6 +99,45 @@ If you intentionally change the JSON schema, regenerate the golden fixtures with
 
 Review the resulting diffs under `src/test/resources/example/expected` and commit as needed.
 
+### Example GitHub Action Usage
+
+To consume the latest JSON Doclet release in another GitHub Actions workflow, download the jar and run `javadoc` with the `-docletpath` flag. Example:
+
+```yaml
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Download latest JSON Doclet
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: <owner>/json-doclet
+          latest: true
+          fileName: json-doclet-*.jar
+          out-file-path: ./tools
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Generate JSON docs
+        run: |
+          DOCLET_JAR=$(ls tools/json-doclet-*.jar | head -n 1)
+          javadoc \
+            -docletpath "$DOCLET_JAR" \
+            -doclet io.fluxzero.jsondoclet.JsonDoclet \
+            -d build/json-docs \
+            --pretty \
+            $(find src/main/java -name '*.java')
+```
+
+This pattern ensures your CI always uses the latest released doclet when generating JSON documentation.
+
 ## Directory Layout
 
 - `src/main/java/io/fluxzero/jsondoclet`: doclet entry point, traversal logic, and serialization models.
