@@ -2,6 +2,8 @@
 
 JSON Doclet is a custom [Javadoc doclet](https://docs.oracle.com/javase/8/docs/technotes/guides/javadoc/doclet/overview.html) that emits structured JSON instead of the traditional HTML output. It lets you capture comprehensive documentation metadata about packages, types, and all member kinds, unlocking downstream integrations such as documentation portals, static analysis, or custom developer tooling.
 
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
+
 ## Features
 
 - Full coverage of the standard Javadoc surface: packages, classes/interfaces/enums/records, nested types, constructors, methods, fields, enum constants, and record components.
