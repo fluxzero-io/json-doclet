@@ -1,16 +1,44 @@
 {
   "name" : "Greeter",
   "qualifiedName" : "com.example.Greeter",
+  "packageName" : "com.example",
   "kind" : "class",
+  "modifiers" : [ "public" ],
+  "annotations" : [ ],
   "documentation" : " Simple greeter example used in smoke tests.\n",
+  "typeParameters" : [ ],
+  "superClass" : "java.lang.Object",
+  "interfaces" : [ ],
+  "fields" : [ ],
+  "constructors" : [ {
+    "name" : "Greeter",
+    "qualifiedName" : "com.example.Greeter#Greeter",
+    "modifiers" : [ "public" ],
+    "annotations" : [ ],
+    "typeParameters" : [ ],
+    "parameters" : [ ],
+    "thrownTypes" : [ ],
+    "varArgs" : false,
+    "documentation" : null
+  } ],
   "methods" : [ {
     "name" : "greet",
     "qualifiedName" : "com.example.Greeter#greet",
     "returnType" : "java.lang.String",
+    "modifiers" : [ "public" ],
+    "annotations" : [ ],
+    "typeParameters" : [ ],
     "parameters" : [ {
       "name" : "name",
-      "type" : "java.lang.String"
+      "type" : "java.lang.String",
+      "varArgs" : false,
+      "annotations" : [ ]
     } ],
+    "thrownTypes" : [ ],
+    "varArgs" : false,
     "documentation" : " Generates a greeting for the provided {@code name}.\n\n @param name person to greet\n @return greeting message\n"
-  } ]
+  } ],
+  "enumConstants" : [ ],
+  "recordComponents" : [ ],
+  "nestedTypes" : [ ]
 }

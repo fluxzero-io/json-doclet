@@ -3,12 +3,18 @@ package io.fluxzero.jsondoclet.core;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import io.fluxzero.jsondoclet.config.DocletConfiguration;
+import io.fluxzero.jsondoclet.model.AnnotationDocumentation;
+import io.fluxzero.jsondoclet.model.ConstructorDocumentation;
 import io.fluxzero.jsondoclet.model.DirectoryIndex;
 import io.fluxzero.jsondoclet.model.DirectoryIndex.IndexFileEntry;
 import io.fluxzero.jsondoclet.model.DirectoryIndex.SubdirectoryEntry;
+import io.fluxzero.jsondoclet.model.EnumConstantDocumentation;
+import io.fluxzero.jsondoclet.model.FieldDocumentation;
 import io.fluxzero.jsondoclet.model.MethodDocumentation;
 import io.fluxzero.jsondoclet.model.MethodDocumentation.MethodParameter;
+import io.fluxzero.jsondoclet.model.NestedTypeDocumentation;
 import io.fluxzero.jsondoclet.model.PackageDocumentation;
+import io.fluxzero.jsondoclet.model.RecordComponentDocumentation;
 import io.fluxzero.jsondoclet.model.TypeDocumentation;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,16 +23,26 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.RecordComponentElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
 import jdk.javadoc.doclet.DocletEnvironment;
@@ -107,26 +123,16 @@ public final class DocGenerationTask {
             Path packageDir = packageDirectory(type);
             createDirectories(packageDir);
 
-            String qualifiedName = elements.getBinaryName(type).toString();
-            String docComment = elements.getDocComment(type);
-            String kind = type.getKind().name().toLowerCase();
-
-            List<MethodDocumentation> methods = extractMethods(type, elements);
-
-            TypeDocumentation payload = new TypeDocumentation(type.getSimpleName().toString(),
-                    qualifiedName,
-                    kind,
-                    docComment,
-                    methods);
+            TypeDocumentation payload = buildTypeDocumentation(type, elements);
             Path typeFile = packageDir.resolve(type.getSimpleName().toString() + ".json");
             if (!writeJson(typeFile, payload)) {
-                throw new RuntimeException("Failed to write type documentation for " + qualifiedName);
+                throw new RuntimeException("Failed to write type documentation for " + payload.qualifiedName());
             }
 
             registerFile(packageDir, new IndexFileEntry(typeFile.getFileName().toString(),
-                    type.getSimpleName().toString(),
-                    qualifiedName,
-                    kind));
+                    payload.name(),
+                    payload.qualifiedName(),
+                    payload.kind()));
             registerAncestors(packageDir);
         });
     }
@@ -141,11 +147,111 @@ public final class DocGenerationTask {
         }
     }
 
+    private TypeDocumentation buildTypeDocumentation(TypeElement type, Elements elements) {
+        String qualifiedName = elements.getBinaryName(type).toString();
+        String packageName = elements.getPackageOf(type).getQualifiedName().toString();
+        String kind = type.getKind().name().toLowerCase();
+        String documentation = elements.getDocComment(type);
+
+        List<String> modifiers = modifiersOf(type);
+        List<AnnotationDocumentation> annotations = annotationsOf(type);
+        List<String> typeParameters = type.getTypeParameters().stream()
+                .map(TypeParameterElement::toString)
+                .toList();
+
+        TypeMirror superClassMirror = type.getSuperclass();
+        String superClass = superClassMirror != null && superClassMirror.getKind() != TypeKind.NONE
+                ? superClassMirror.toString()
+                : null;
+
+        List<String> interfaces = type.getInterfaces().stream()
+                .map(Object::toString)
+                .sorted()
+                .toList();
+
+        List<FieldDocumentation> fields = extractFields(type, elements);
+        List<ConstructorDocumentation> constructors = extractConstructors(type, elements);
+        List<MethodDocumentation> methods = extractMethods(type, elements);
+        List<EnumConstantDocumentation> enumConstants = extractEnumConstants(type, elements);
+        List<RecordComponentDocumentation> recordComponents = extractRecordComponents(type, elements);
+        List<NestedTypeDocumentation> nestedTypes = extractNestedTypes(type, elements);
+
+        return new TypeDocumentation(type.getSimpleName().toString(),
+                qualifiedName,
+                packageName,
+                kind,
+                modifiers,
+                annotations,
+                documentation,
+                typeParameters,
+                superClass,
+                interfaces,
+                fields,
+                constructors,
+                methods,
+                enumConstants,
+                recordComponents,
+                nestedTypes);
+    }
+
+    private List<FieldDocumentation> extractFields(TypeElement type, Elements elements) {
+        String qualifiedTypeName = elements.getBinaryName(type).toString();
+        return ElementFilter.fieldsIn(type.getEnclosedElements()).stream()
+                .filter(field -> field.getKind() == ElementKind.FIELD)
+                .sorted(Comparator.comparing(field -> field.getSimpleName().toString()))
+                .map(field -> new FieldDocumentation(
+                        field.getSimpleName().toString(),
+                        qualifiedTypeName + "." + field.getSimpleName(),
+                        field.asType().toString(),
+                        modifiersOf(field),
+                        annotationsOf(field),
+                        elements.getDocComment(field),
+                        field.getConstantValue()))
+                .toList();
+    }
+
+    private List<ConstructorDocumentation> extractConstructors(TypeElement type, Elements elements) {
+        return ElementFilter.constructorsIn(type.getEnclosedElements()).stream()
+                .sorted(methodComparator())
+                .map(constructor -> toConstructorDocumentation(type, constructor, elements))
+                .toList();
+    }
+
+    private ConstructorDocumentation toConstructorDocumentation(TypeElement declaringType,
+            ExecutableElement constructor,
+            Elements elements) {
+        String constructorName = declaringType.getSimpleName().toString();
+        String qualifiedTypeName = elements.getBinaryName(declaringType).toString();
+        String qualifiedConstructorName = qualifiedTypeName + "#" + constructorName;
+        String documentation = elements.getDocComment(constructor);
+
+        List<String> modifiers = modifiersOf(constructor);
+        List<AnnotationDocumentation> annotations = annotationsOf(constructor);
+        List<String> typeParameters = constructor.getTypeParameters().stream()
+                .map(TypeParameterElement::toString)
+                .toList();
+        List<MethodParameter> parameters = constructor.getParameters().stream()
+                .map(parameter -> toParameterDocumentation(constructor, parameter))
+                .toList();
+        List<String> thrownTypes = constructor.getThrownTypes().stream()
+                .map(Object::toString)
+                .sorted()
+                .toList();
+
+        return new ConstructorDocumentation(constructorName,
+                qualifiedConstructorName,
+                modifiers,
+                annotations,
+                typeParameters,
+                parameters,
+                thrownTypes,
+                constructor.isVarArgs(),
+                documentation);
+    }
+
     private List<MethodDocumentation> extractMethods(TypeElement type, Elements elements) {
-        return type.getEnclosedElements().stream()
-                .filter(element -> element.getKind() == ElementKind.METHOD)
-                .map(ExecutableElement.class::cast)
-                .sorted(Comparator.comparing(method -> method.getSimpleName().toString()))
+        return ElementFilter.methodsIn(type.getEnclosedElements()).stream()
+                .sorted(methodComparator())
                 .map(method -> toMethodDocumentation(type, method, elements))
                 .toList();
     }
@@ -156,18 +262,109 @@ public final class DocGenerationTask {
         String methodName = method.getSimpleName().toString();
         String qualifiedTypeName = elements.getBinaryName(declaringType).toString();
         String qualifiedMethodName = qualifiedTypeName + "#" + methodName;
-        String returnType = method.getReturnType().toString();
-        String documentation = elements.getDocComment(method);
 
+        List<String> modifiers = modifiersOf(method);
+        List<AnnotationDocumentation> annotations = annotationsOf(method);
+        List<String> typeParameters = method.getTypeParameters().stream()
+                .map(TypeParameterElement::toString)
+                .toList();
         List<MethodParameter> parameters = method.getParameters().stream()
-                .map(this::toParameterDocumentation)
+                .map(parameter -> toParameterDocumentation(method, parameter))
+                .toList();
+        List<String> thrownTypes = method.getThrownTypes().stream()
+                .map(Object::toString)
+                .sorted()
                 .toList();
 
-        return new MethodDocumentation(methodName, qualifiedMethodName, returnType, parameters, documentation);
+        return new MethodDocumentation(methodName,
+                qualifiedMethodName,
+                method.getReturnType().toString(),
+                modifiers,
+                annotations,
+                typeParameters,
+                parameters,
+                thrownTypes,
+                method.isVarArgs(),
+                elements.getDocComment(method));
     }
 
-    private MethodParameter toParameterDocumentation(VariableElement parameter) {
-        return new MethodParameter(parameter.getSimpleName().toString(), parameter.asType().toString());
+    private List<EnumConstantDocumentation> extractEnumConstants(TypeElement type, Elements elements) {
+        String qualifiedTypeName = elements.getBinaryName(type).toString();
+        return ElementFilter.fieldsIn(type.getEnclosedElements()).stream()
+                .filter(field -> field.getKind() == ElementKind.ENUM_CONSTANT)
+                .sorted(Comparator.comparing(field -> field.getSimpleName().toString()))
+                .map(constant -> new EnumConstantDocumentation(
+                        constant.getSimpleName().toString(),
+                        qualifiedTypeName + "." + constant.getSimpleName(),
+                        annotationsOf(constant),
+                        elements.getDocComment(constant)))
+                .toList();
+    }
+
+    private List<RecordComponentDocumentation> extractRecordComponents(TypeElement type, Elements elements) {
+        return ElementFilter.recordComponentsIn(type.getEnclosedElements()).stream()
+                .sorted(Comparator.comparing(component -> component.getSimpleName().toString()))
+                .map(component -> new RecordComponentDocumentation(
+                        component.getSimpleName().toString(),
+                        component.asType().toString(),
+                        annotationsOf(component),
+                        elements.getDocComment(component)))
+                .toList();
+    }
+
+    private List<NestedTypeDocumentation> extractNestedTypes(TypeElement type, Elements elements) {
+        return ElementFilter.typesIn(type.getEnclosedElements()).stream()
+                .sorted(Comparator.comparing(nested -> nested.getSimpleName().toString()))
+                .map(nested -> new NestedTypeDocumentation(
+                        nested.getSimpleName().toString(),
+                        elements.getBinaryName(nested).toString(),
+                        nested.getKind().name().toLowerCase(),
+                        modifiersOf(nested),
+                        annotationsOf(nested)))
+                .toList();
+    }
+
+    private MethodParameter toParameterDocumentation(ExecutableElement executable, VariableElement parameter) {
+        List<AnnotationDocumentation> annotations = annotationsOf(parameter);
+        boolean isVarArgsParam = executable.isVarArgs()
+                && executable.getParameters().indexOf(parameter) == executable.getParameters().size() - 1;
+        return new MethodParameter(parameter.getSimpleName().toString(),
+                parameter.asType().toString(),
+                isVarArgsParam,
+                annotations);
+    }
+
+    private Comparator<ExecutableElement> methodComparator() {
+        return Comparator
+                .comparing((ExecutableElement method) -> method.getSimpleName().toString())
+                .thenComparing(method -> method.getParameters().stream()
+                        .map(param -> param.asType().toString())
+                        .collect(Collectors.joining(",")));
+    }
+
+    private List<String> modifiersOf(Element element) {
+        return element.getModifiers().stream()
+                .map(Modifier::toString)
+                .sorted()
+                .toList();
+    }
+
+    private List<AnnotationDocumentation> annotationsOf(Element element) {
+        return element.getAnnotationMirrors().stream()
+                .map(this::toAnnotationDocumentation)
+                .toList();
+    }
+
+    private AnnotationDocumentation toAnnotationDocumentation(AnnotationMirror mirror) {
+        Map<String, String> values = new LinkedHashMap<>();
+        mirror.getElementValues().entrySet().stream()
+                .sorted(Map.Entry.comparingByKey(Comparator.comparing(e -> e.getSimpleName().toString())))
+                .forEach(entry -> values.put(entry.getKey().getSimpleName().toString(), formatAnnotationValue(entry.getValue())));
+        return new AnnotationDocumentation(mirror.getAnnotationType().toString(), values);
+    }
+
+    private String formatAnnotationValue(AnnotationValue value) {
+        return value.getValue() == null ? "null" : value.getValue().toString();
     }
 
     private boolean writeIndexes() {

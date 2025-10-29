@@ -8,12 +8,20 @@ import java.util.List;
 public record MethodDocumentation(String name,
         String qualifiedName,
         String returnType,
+        List<String> modifiers,
+        List<AnnotationDocumentation> annotations,
+        List<String> typeParameters,
         List<MethodParameter> parameters,
+        List<String> thrownTypes,
+        boolean varArgs,
         String documentation) {
 
     /**
      * Method parameter descriptor capturing the declaration type and name.
      */
-    public record MethodParameter(String name, String type) {
+    public record MethodParameter(String name,
+            String type,
+            boolean varArgs,
+            List<AnnotationDocumentation> annotations) {
     }
 }
