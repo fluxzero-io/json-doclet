@@ -1,0 +1,14 @@
+{
+  "files" : [ {
+    "file" : "package-info.json",
+    "name" : "example",
+    "qualifiedName" : "com.example",
+    "kind" : "package"
+  }, {
+    "file" : "Greeter.json",
+    "name" : "Greeter",
+    "qualifiedName" : "com.example.Greeter",
+    "kind" : "class"
+  } ],
+  "subdirectories" : [ ]
+}

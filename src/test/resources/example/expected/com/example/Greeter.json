@@ -1,0 +1,6 @@
+{
+  "name" : "Greeter",
+  "qualifiedName" : "com.example.Greeter",
+  "kind" : "class",
+  "documentation" : " Simple greeter example used in smoke tests.\n"
+}
