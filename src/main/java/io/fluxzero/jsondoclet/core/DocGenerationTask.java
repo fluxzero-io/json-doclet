@@ -6,6 +6,8 @@ import io.fluxzero.jsondoclet.config.DocletConfiguration;
 import io.fluxzero.jsondoclet.model.DirectoryIndex;
 import io.fluxzero.jsondoclet.model.DirectoryIndex.IndexFileEntry;
 import io.fluxzero.jsondoclet.model.DirectoryIndex.SubdirectoryEntry;
+import io.fluxzero.jsondoclet.model.MethodDocumentation;
+import io.fluxzero.jsondoclet.model.MethodDocumentation.MethodParameter;
 import io.fluxzero.jsondoclet.model.PackageDocumentation;
 import io.fluxzero.jsondoclet.model.TypeDocumentation;
 import java.io.IOException;
@@ -13,14 +15,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
 import jdk.javadoc.doclet.DocletEnvironment;
@@ -105,7 +111,13 @@ public final class DocGenerationTask {
             String docComment = elements.getDocComment(type);
             String kind = type.getKind().name().toLowerCase();
 
-            TypeDocumentation payload = new TypeDocumentation(type.getSimpleName().toString(), qualifiedName, kind, docComment);
+            List<MethodDocumentation> methods = extractMethods(type, elements);
+
+            TypeDocumentation payload = new TypeDocumentation(type.getSimpleName().toString(),
+                    qualifiedName,
+                    kind,
+                    docComment,
+                    methods);
             Path typeFile = packageDir.resolve(type.getSimpleName().toString() + ".json");
             if (!writeJson(typeFile, payload)) {
                 throw new RuntimeException("Failed to write type documentation for " + qualifiedName);
@@ -127,6 +139,35 @@ public final class DocGenerationTask {
             reporter.print(Diagnostic.Kind.ERROR, ex.getMessage());
             return false;
         }
+    }
+
+    private List<MethodDocumentation> extractMethods(TypeElement type, Elements elements) {
+        return type.getEnclosedElements().stream()
+                .filter(element -> element.getKind() == ElementKind.METHOD)
+                .map(ExecutableElement.class::cast)
+                .sorted(Comparator.comparing(method -> method.getSimpleName().toString()))
+                .map(method -> toMethodDocumentation(type, method, elements))
+                .toList();
+    }
+
+    private MethodDocumentation toMethodDocumentation(TypeElement declaringType,
+            ExecutableElement method,
+            Elements elements) {
+        String methodName = method.getSimpleName().toString();
+        String qualifiedTypeName = elements.getBinaryName(declaringType).toString();
+        String qualifiedMethodName = qualifiedTypeName + "#" + methodName;
+        String returnType = method.getReturnType().toString();
+        String documentation = elements.getDocComment(method);
+
+        List<MethodParameter> parameters = method.getParameters().stream()
+                .map(this::toParameterDocumentation)
+                .toList();
+
+        return new MethodDocumentation(methodName, qualifiedMethodName, returnType, parameters, documentation);
+    }
+
+    private MethodParameter toParameterDocumentation(VariableElement parameter) {
+        return new MethodParameter(parameter.getSimpleName().toString(), parameter.asType().toString());
     }
 
     private boolean writeIndexes() {

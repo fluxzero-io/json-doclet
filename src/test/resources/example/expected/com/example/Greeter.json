@@ -2,5 +2,15 @@
   "name" : "Greeter",
   "qualifiedName" : "com.example.Greeter",
   "kind" : "class",
-  "documentation" : " Simple greeter example used in smoke tests.\n"
+  "documentation" : " Simple greeter example used in smoke tests.\n",
+  "methods" : [ {
+    "name" : "greet",
+    "qualifiedName" : "com.example.Greeter#greet",
+    "returnType" : "java.lang.String",
+    "parameters" : [ {
+      "name" : "name",
+      "type" : "java.lang.String"
+    } ],
+    "documentation" : " Generates a greeting for the provided {@code name}.\n\n @param name person to greet\n @return greeting message\n"
+  } ]
 }
