@@ -24,6 +24,7 @@ repositories {
 
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation("org.everit.json:org.everit.json.schema:1.5.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.2")
 }
 

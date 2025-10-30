@@ -3,8 +3,10 @@ package io.fluxzero.jsondoclet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -16,6 +18,10 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
+import org.everit.json.schema.Schema;
+import org.everit.json.schema.loader.SchemaLoader;
+import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -26,6 +32,7 @@ class JsonDocletSmokeTest {
     private static final Path SCENARIO_ROOT = TEST_RESOURCES_ROOT.resolve("example");
     private static final Path SOURCE_ROOT = SCENARIO_ROOT.resolve("source");
     private static final Path EXPECTED_ROOT = SCENARIO_ROOT.resolve("expected");
+    private static final Schema OUTPUT_SCHEMA = loadSchema();
 
     @Test
     void generatesJsonOutputForSampleSources() throws Exception {
@@ -102,6 +109,7 @@ class JsonDocletSmokeTest {
             String expectedJson = readNormalized(expected);
             String actualJson = readNormalized(actual);
             assertEquals(expectedJson, actualJson, "Mismatch for " + relative);
+            validateAgainstSchema(relative, actualJson);
         }
 
         List<Path> actualFiles;
@@ -142,5 +150,26 @@ class JsonDocletSmokeTest {
 
     private String readNormalized(Path file) throws IOException {
         return Files.readString(file).replace("\r\n", "\n");
+    }
+
+    private static Schema loadSchema() {
+        try (InputStream stream = JsonDocletSmokeTest.class.getResourceAsStream("/json-doclet.schema.json")) {
+            if (stream == null) {
+                throw new IllegalStateException("json-doclet.schema.json resource is missing");
+            }
+            JSONObject schemaJson = new JSONObject(new JSONTokener(stream));
+            return SchemaLoader.load(schemaJson);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load JSON schema", e);
+        }
+    }
+
+    private void validateAgainstSchema(Path relativePath, String jsonContent) {
+        Object parsed = new JSONTokener(jsonContent).nextValue();
+        if (parsed instanceof JSONObject object) {
+            OUTPUT_SCHEMA.validate(object);
+        } else {
+            fail("Expected JSON object but found " + parsed.getClass().getSimpleName() + " for " + relativePath);
+        }
     }
 }
