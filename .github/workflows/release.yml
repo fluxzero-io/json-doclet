@@ -93,20 +93,20 @@ jobs:
             ls build/libs
             exit 1
           fi
-          SCHEMA_DIR="build/schema"
-          mkdir -p "$SCHEMA_DIR"
-          SCHEMA="$SCHEMA_DIR/json-doclet-${RELEASE_VERSION}.schema.json"
-          cp src/main/resources/json-doclet.schema.json "$SCHEMA"
-          echo "jar=$JAR" >> "$GITHUB_OUTPUT"
-          echo "schema=$SCHEMA" >> "$GITHUB_OUTPUT"
+          ASSETS_DIR="build/release-assets"
+          mkdir -p "$ASSETS_DIR"
+          JAR_OUT="$ASSETS_DIR/json-doclet-${RELEASE_VERSION}.jar"
+          cp "$JAR" "$JAR_OUT"
+          SCHEMA_OUT="$ASSETS_DIR/json-doclet-${RELEASE_VERSION}.schema.json"
+          cp src/main/resources/json-doclet.schema.json "$SCHEMA_OUT"
+          echo "jar=$JAR_OUT" >> "$GITHUB_OUTPUT"
+          echo "schema=$SCHEMA_OUT" >> "$GITHUB_OUTPUT"
 
       - name: Upload release assets
         uses: actions/upload-artifact@v4
         with:
           name: json-doclet-assets
-          path: |
-            ${{ steps.assets.outputs.jar }}
-            ${{ steps.assets.outputs.schema }}
+          path: build/release-assets/
 
   release:
     needs: [determine-version, build]
