@@ -33,7 +33,7 @@ Commits on `main` trigger a GitHub Actions workflow that:
 
 - Analyses commits with `mathieudutour/github-tag-action`, bumping the patch version by default and the minor version when a `feat:` commit has landed since the previous release.
 - Builds the jar with that version embedded.
-- Creates a Git tag and GitHub Release containing the changelog and attaches the jar as an asset.
+- Creates a Git tag and GitHub Release containing the changelog and attaches both the doclet jar and JSON schema assets.
 
 You can download the latest release from the **Releases** page or programmatically in other workflows, for example:
 

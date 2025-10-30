@@ -83,8 +83,8 @@ jobs:
       - name: Build project
         run: ./gradlew clean build -PreleaseVersion=$RELEASE_VERSION
 
-      - name: Locate jar
-        id: locate
+      - name: Prepare release assets
+        id: assets
         run: |
           set -eo pipefail
           JAR="build/libs/json-doclet-${RELEASE_VERSION}.jar"
@@ -93,13 +93,20 @@ jobs:
             ls build/libs
             exit 1
           fi
+          SCHEMA_DIR="build/schema"
+          mkdir -p "$SCHEMA_DIR"
+          SCHEMA="$SCHEMA_DIR/json-doclet-${RELEASE_VERSION}.schema.json"
+          cp src/main/resources/json-doclet.schema.json "$SCHEMA"
           echo "jar=$JAR" >> "$GITHUB_OUTPUT"
+          echo "schema=$SCHEMA" >> "$GITHUB_OUTPUT"
 
-      - name: Upload jar artifact
+      - name: Upload release assets
         uses: actions/upload-artifact@v4
         with:
-          name: json-doclet-jar
-          path: ${{ steps.locate.outputs.jar }}
+          name: json-doclet-assets
+          path: |
+            ${{ steps.assets.outputs.jar }}
+            ${{ steps.assets.outputs.schema }}
 
   release:
     needs: [determine-version, build]
@@ -110,13 +117,13 @@ jobs:
       RELEASE_TAG: ${{ needs.determine-version.outputs.new_tag }}
       CHANGELOG: ${{ needs.determine-version.outputs.changelog }}
     steps:
-      - name: Download jar artifact
+      - name: Download release assets
         uses: actions/download-artifact@v4
         with:
-          name: json-doclet-jar
+          name: json-doclet-assets
           path: dist
 
-      - name: Locate downloaded jar
+      - name: Locate downloaded assets
         id: locate
         run: |
           set -eo pipefail
@@ -126,15 +133,24 @@ jobs:
             ls dist
             exit 1
           fi
+          SCHEMA="dist/json-doclet-${RELEASE_VERSION}.schema.json"
+          if [ ! -f "$SCHEMA" ]; then
+            echo "Downloaded schema $SCHEMA not found" >&2
+            ls dist
+            exit 1
+          fi
           echo "jar=$JAR" >> "$GITHUB_OUTPUT"
+          echo "schema=$SCHEMA" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub release and attach jar
+      - name: Create GitHub release and attach assets
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_TAG }}
           body: ${{ env.CHANGELOG }}
-          files: ${{ steps.locate.outputs.jar }}
+          files: |
+            ${{ steps.locate.outputs.jar }}
+            ${{ steps.locate.outputs.schema }}
           draft: false
           prerelease: false
         env:
