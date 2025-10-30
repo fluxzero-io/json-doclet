@@ -201,6 +201,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "package": {
+          "$ref": "#/$defs/PackageDocumentation"
+        },
         "files": {
           "type": "array",
           "items": { "$ref": "#/$defs/IndexFileEntry" }

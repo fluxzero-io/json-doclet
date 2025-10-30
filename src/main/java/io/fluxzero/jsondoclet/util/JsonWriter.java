@@ -26,6 +26,7 @@ public final class JsonWriter {
     public static void write(Path path, Object value, boolean pretty) throws IOException {
         try (Writer writer = Files.newBufferedWriter(path)) {
             new Serializer(writer, pretty).writeValue(value);
+            writer.write('\n');
         }
     }
 
@@ -179,6 +180,9 @@ public final class JsonWriter {
 
         private void writeDirectoryIndex(DirectoryIndex index) throws IOException {
             Map<String, Object> view = new LinkedHashMap<>();
+            if (index.getPackage() != null) {
+                view.put("package", index.getPackage());
+            }
             view.put("files", index.getFiles());
             view.put("subdirectories", index.getSubdirectories());
             writeMap(view);

@@ -33,6 +33,7 @@ class JsonDocletSmokeTest {
     private static final Path SOURCE_ROOT = SCENARIO_ROOT.resolve("source");
     private static final Path EXPECTED_ROOT = SCENARIO_ROOT.resolve("expected");
     private static final Schema OUTPUT_SCHEMA = loadSchema();
+    private static final Boolean updateExpected = Boolean.getBoolean("jsondoclet.updateExpected");
 
     @Test
     void generatesJsonOutputForSampleSources() throws Exception {
@@ -92,7 +93,7 @@ class JsonDocletSmokeTest {
     }
 
     private void assertJsonOutputsMatch(Path expectedRoot, Path actualRoot) throws IOException {
-        if (Boolean.getBoolean("jsondoclet.updateExpected")) {
+        if (updateExpected) {
             overwriteExpected(expectedRoot, actualRoot);
             return;
         }

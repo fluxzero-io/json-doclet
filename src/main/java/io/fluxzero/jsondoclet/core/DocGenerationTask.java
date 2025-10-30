@@ -102,15 +102,8 @@ public final class DocGenerationTask {
             String docComment = elements.getDocComment(pkg);
 
             PackageDocumentation payload = new PackageDocumentation(pkg.getSimpleName().toString(), qualifiedName, docComment);
-            Path packageFile = packageDir.resolve("package-info.json");
-            if (!writeJson(packageFile, payload)) {
-                throw new RuntimeException("Failed to write package documentation for " + qualifiedName);
-            }
-
-            registerFile(packageDir, new IndexFileEntry(packageFile.getFileName().toString(),
-                    pkg.getSimpleName().toString(),
-                    qualifiedName,
-                    "package"));
+            DirectoryIndex index = indexes.computeIfAbsent(packageDir, ignored -> new DirectoryIndex());
+            index.setPackage(payload);
             registerAncestors(packageDir);
         });
     }

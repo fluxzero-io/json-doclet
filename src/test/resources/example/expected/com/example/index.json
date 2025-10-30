@@ -1,10 +1,10 @@
 {
-  "files" : [ {
-    "file" : "package-info.json",
+  "package" : {
     "name" : "example",
     "qualifiedName" : "com.example",
-    "kind" : "package"
-  }, {
+    "documentation" : " Sample package used in smoke tests.\n"
+  },
+  "files" : [ {
     "file" : "Greeter.json",
     "name" : "Greeter",
     "qualifiedName" : "com.example.Greeter",

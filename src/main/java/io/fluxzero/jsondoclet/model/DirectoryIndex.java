@@ -10,6 +10,7 @@ import java.util.List;
 public final class DirectoryIndex {
     private final List<IndexFileEntry> files = new ArrayList<>();
     private final List<SubdirectoryEntry> subdirectories = new ArrayList<>();
+    private PackageDocumentation packageDocumentation;
 
     /**
      * Files in the current directory that point to generated JSON artifacts.
@@ -41,6 +42,20 @@ public final class DirectoryIndex {
         if (!subdirectories.contains(entry)) {
             subdirectories.add(entry);
         }
+    }
+
+    /**
+     * Assigns package-level documentation metadata to this directory.
+     */
+    public void setPackage(PackageDocumentation documentation) {
+        this.packageDocumentation = documentation;
+    }
+
+    /**
+     * Returns documentation metadata for the package corresponding to this directory, if any.
+     */
+    public PackageDocumentation getPackage() {
+        return packageDocumentation;
     }
 
     /**
