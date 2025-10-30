@@ -1,7 +1,5 @@
 package io.fluxzero.jsondoclet.core;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import io.fluxzero.jsondoclet.config.DocletConfiguration;
 import io.fluxzero.jsondoclet.model.AnnotationDocumentation;
 import io.fluxzero.jsondoclet.model.ConstructorDocumentation;
@@ -16,6 +14,7 @@ import io.fluxzero.jsondoclet.model.NestedTypeDocumentation;
 import io.fluxzero.jsondoclet.model.PackageDocumentation;
 import io.fluxzero.jsondoclet.model.RecordComponentDocumentation;
 import io.fluxzero.jsondoclet.model.TypeDocumentation;
+import io.fluxzero.jsondoclet.util.JsonWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,7 +54,6 @@ public final class DocGenerationTask {
     private final DocletConfiguration configuration;
     private final DocletEnvironment environment;
     private final Reporter reporter;
-    private final ObjectMapper mapper;
     private final Map<Path, DirectoryIndex> indexes = new HashMap<>();
 
     /**
@@ -65,7 +63,6 @@ public final class DocGenerationTask {
         this.configuration = configuration;
         this.environment = environment;
         this.reporter = reporter;
-        this.mapper = createMapper(configuration.prettyPrint());
     }
 
     /**
@@ -382,7 +379,7 @@ public final class DocGenerationTask {
 
     private boolean writeJson(Path path, Object payload) {
         try {
-            mapper.writeValue(path.toFile(), payload);
+            JsonWriter.write(path, payload, configuration.prettyPrint());
             return true;
         } catch (IOException e) {
             reporter.print(Diagnostic.Kind.ERROR, "Failed to write " + path + ": " + e.getMessage());
@@ -440,11 +437,4 @@ public final class DocGenerationTask {
         }
     }
 
-    private static ObjectMapper createMapper(boolean prettyPrint) {
-        ObjectMapper mapper = new ObjectMapper();
-        if (prettyPrint) {
-            mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        }
-        return mapper;
-    }
 }

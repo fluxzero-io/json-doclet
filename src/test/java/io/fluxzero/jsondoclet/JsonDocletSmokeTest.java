@@ -16,8 +16,6 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -92,8 +90,6 @@ class JsonDocletSmokeTest {
             return;
         }
 
-        ObjectMapper mapper = new ObjectMapper();
-
         List<Path> expectedFiles;
         try (var stream = Files.walk(expectedRoot)) {
             expectedFiles = stream.filter(Files::isRegularFile).toList();
@@ -103,9 +99,8 @@ class JsonDocletSmokeTest {
             Path relative = expectedRoot.relativize(expected);
             Path actual = actualRoot.resolve(relative.toString());
             assertTrue(Files.exists(actual), "Missing generated file: " + relative);
-
-            JsonNode expectedJson = mapper.readTree(expected.toFile());
-            JsonNode actualJson = mapper.readTree(actual.toFile());
+            String expectedJson = readNormalized(expected);
+            String actualJson = readNormalized(actual);
             assertEquals(expectedJson, actualJson, "Mismatch for " + relative);
         }
 
@@ -143,5 +138,9 @@ class JsonDocletSmokeTest {
             return;
         }
         copyTree(actualRoot, expectedRoot);
+    }
+
+    private String readNormalized(Path file) throws IOException {
+        return Files.readString(file).replace("\r\n", "\n");
     }
 }

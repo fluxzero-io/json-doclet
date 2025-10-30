@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 /**
  * Index metadata generated per output directory.
  */
@@ -16,7 +14,6 @@ public final class DirectoryIndex {
     /**
      * Files in the current directory that point to generated JSON artifacts.
      */
-    @JsonProperty("files")
     public List<IndexFileEntry> getFiles() {
         return Collections.unmodifiableList(files);
     }
@@ -24,7 +21,6 @@ public final class DirectoryIndex {
     /**
      * Subdirectories that contain further index files.
      */
-    @JsonProperty("subdirectories")
     public List<SubdirectoryEntry> getSubdirectories() {
         return Collections.unmodifiableList(subdirectories);
     }

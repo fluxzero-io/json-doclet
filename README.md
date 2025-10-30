@@ -85,6 +85,40 @@ tasks.javadoc {
 
 Ensure the doclet jar is on the task classpath (`dependsOn(docletJar)` if necessary).
 
+### Maven Integration
+
+For Maven builds, wire the doclet into the `maven-javadoc-plugin`. Point the plugin at the jar you built or downloaded from a release (stored here under `tools/`):
+
+```xml
+<build>
+  <plugins>
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-javadoc-plugin</artifactId>
+      <version>3.6.3</version>
+      <configuration>
+        <doclet>io.fluxzero.jsondoclet.JsonDoclet</doclet>
+        <docletPath>${project.basedir}/tools/json-doclet-0.1.0.jar</docletPath>
+        <additionalOptions>
+          <additionalOption>--pretty</additionalOption>
+          <additionalOption>-d</additionalOption>
+          <additionalOption>${project.build.directory}/json-docs</additionalOption>
+        </additionalOptions>
+      </configuration>
+      <executions>
+        <execution>
+          <goals>
+            <goal>javadoc</goal>
+          </goals>
+        </execution>
+      </executions>
+    </plugin>
+  </plugins>
+</build>
+```
+
+Adjust the jar path and options to match your build; if you publish the doclet to an artifact repository you can replace `docletPath` with `<docletArtifact>` coordinates instead. The jar is self-contained and has no runtime dependencies.
+
 ### Testing
 
 A smoke test lives at `src/test/java/io/fluxzero/jsondoclet/JsonDocletSmokeTest.java`. To run the test suite:
