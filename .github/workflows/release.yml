@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   determine-version:
@@ -82,6 +83,12 @@ jobs:
 
       - name: Build project
         run: ./gradlew clean build -PreleaseVersion=$RELEASE_VERSION
+
+      - name: Publish to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: ./gradlew publish -PreleaseVersion=$RELEASE_VERSION
 
       - name: Prepare release assets
         id: assets

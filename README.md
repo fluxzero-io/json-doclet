@@ -49,6 +49,51 @@ You can download the latest release from the **Releases** page or programmatical
 
 To run locally with a specific version, grab the jar from the release and invoke `javadoc` as shown below.
 
+### GitHub Packages
+
+Each release also publishes the doclet to the GitHub Packages Maven registry under the coordinates `io.fluxzero:json-doclet`.
+
+Add the GitHub Packages repository to your build and authenticate with a personal access token (at minimum the `read:packages` scope) or a GitHub Actions token.
+
+Gradle (Kotlin DSL):
+
+```kotlin
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/fluxzero/json-doclet")
+        credentials {
+            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+}
+
+dependencies {
+    implementation("io.fluxzero:json-doclet:<version>")
+}
+```
+
+Maven:
+
+```xml
+<repositories>
+  <repository>
+    <id>fluxzero-json-doclet</id>
+    <url>https://maven.pkg.github.com/fluxzero/json-doclet</url>
+  </repository>
+</repositories>
+
+<dependencies>
+  <dependency>
+    <groupId>io.fluxzero</groupId>
+    <artifactId>json-doclet</artifactId>
+    <version>{version}</version>
+  </dependency>
+</dependencies>
+```
+
+Supply credentials through `~/.m2/settings.xml`, environment variables, or your CI secrets. When running inside GitHub Actions, `GITHUB_TOKEN` and `GITHUB_ACTOR` are already available.
+
 ### Running the Doclet
 
 Invoke the JDK `javadoc` tool and point it at the doclet jar:
