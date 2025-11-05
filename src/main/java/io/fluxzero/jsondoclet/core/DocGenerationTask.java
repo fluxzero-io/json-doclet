@@ -88,6 +88,9 @@ public final class DocGenerationTask {
             }
         }
 
+        packages.sort(Comparator.comparing(pkg -> pkg.getQualifiedName().toString()));
+        types.sort(Comparator.comparing(type -> type.getQualifiedName().toString()));
+
         boolean ok = processPackages(packages, elements) && processTypes(types, elements);
         if (!ok) {
             return false;
@@ -131,7 +134,9 @@ public final class DocGenerationTask {
                 payload.kind()));
         registerAncestors(packageDir);
 
-        ElementFilter.typesIn(type.getEnclosedElements()).forEach(nested -> writeTypeRecursively(nested, elements));
+        ElementFilter.typesIn(type.getEnclosedElements()).stream()
+                .sorted(Comparator.comparing(nested -> nested.getQualifiedName().toString()))
+                .forEach(nested -> writeTypeRecursively(nested, elements));
     }
 
     private <T> boolean processElements(Collection<T> elements, Consumer<T> consumer) {
