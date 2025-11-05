@@ -1,0 +1,28 @@
+{
+  "name" : "Inner",
+  "qualifiedName" : "com.example.Outer$Inner",
+  "packageName" : "com.example",
+  "kind" : "class",
+  "modifiers" : [ "public", "static" ],
+  "annotations" : [ ],
+  "documentation" : " Nested type that extends the outer class to exercise inheritance handling.\n",
+  "typeParameters" : [ ],
+  "superClass" : "com.example.Outer",
+  "interfaces" : [ ],
+  "fields" : [ ],
+  "constructors" : [ {
+    "name" : "Inner",
+    "qualifiedName" : "com.example.Outer$Inner#Inner",
+    "modifiers" : [ "public" ],
+    "annotations" : [ ],
+    "typeParameters" : [ ],
+    "parameters" : [ ],
+    "thrownTypes" : [ ],
+    "varArgs" : false,
+    "documentation" : null
+  } ],
+  "methods" : [ ],
+  "enumConstants" : [ ],
+  "recordComponents" : [ ],
+  "nestedTypes" : [ ]
+}

@@ -9,6 +9,16 @@
     "name" : "Greeter",
     "qualifiedName" : "com.example.Greeter",
     "kind" : "class"
+  }, {
+    "file" : "Outer.json",
+    "name" : "Outer",
+    "qualifiedName" : "com.example.Outer",
+    "kind" : "class"
+  }, {
+    "file" : "Outer.Inner.json",
+    "name" : "Outer.Inner",
+    "qualifiedName" : "com.example.Outer$Inner",
+    "kind" : "class"
   } ],
   "subdirectories" : [ ]
 }

@@ -81,7 +81,10 @@ public final class DocGenerationTask {
             if (element instanceof PackageElement pkg) {
                 packages.add(pkg);
             } else if (element instanceof TypeElement type) {
-                types.add(type);
+                Element enclosing = type.getEnclosingElement();
+                if (enclosing instanceof PackageElement) {
+                    types.add(type);
+                }
             }
         }
 
@@ -109,22 +112,26 @@ public final class DocGenerationTask {
     }
 
     private boolean processTypes(List<TypeElement> types, Elements elements) {
-        return processElements(types, type -> {
-            Path packageDir = packageDirectory(type);
-            createDirectories(packageDir);
+        return processElements(types, type -> writeTypeRecursively(type, elements));
+    }
 
-            TypeDocumentation payload = buildTypeDocumentation(type, elements);
-            Path typeFile = packageDir.resolve(type.getSimpleName().toString() + ".json");
-            if (!writeJson(typeFile, payload)) {
-                throw new RuntimeException("Failed to write type documentation for " + payload.qualifiedName());
-            }
+    private void writeTypeRecursively(TypeElement type, Elements elements) {
+        Path packageDir = packageDirectory(type);
+        createDirectories(packageDir);
 
-            registerFile(packageDir, new IndexFileEntry(typeFile.getFileName().toString(),
-                    payload.name(),
-                    payload.qualifiedName(),
-                    payload.kind()));
-            registerAncestors(packageDir);
-        });
+        TypeDocumentation payload = buildTypeDocumentation(type, elements);
+        Path typeFile = packageDir.resolve(typeFileName(type));
+        if (!writeJson(typeFile, payload)) {
+            throw new RuntimeException("Failed to write type documentation for " + payload.qualifiedName());
+        }
+
+        registerFile(packageDir, new IndexFileEntry(typeFile.getFileName().toString(),
+                typeDisplayName(type, elements),
+                payload.qualifiedName(),
+                payload.kind()));
+        registerAncestors(packageDir);
+
+        ElementFilter.typesIn(type.getEnclosedElements()).forEach(nested -> writeTypeRecursively(nested, elements));
     }
 
     private <T> boolean processElements(Collection<T> elements, Consumer<T> consumer) {
@@ -389,11 +396,30 @@ public final class DocGenerationTask {
     }
 
     private Path packageDirectory(TypeElement type) {
-        Element enclosing = type.getEnclosingElement();
-        if (enclosing instanceof PackageElement pkg) {
-            return packageDirectory(pkg);
+        PackageElement pkg = environment.getElementUtils().getPackageOf(type);
+        return packageDirectory(pkg);
+    }
+
+    private String typeFileName(TypeElement type) {
+        List<String> names = new ArrayList<>();
+        Element current = type;
+        while (current instanceof TypeElement typeElement) {
+            names.add(0, typeElement.getSimpleName().toString());
+            current = typeElement.getEnclosingElement();
         }
-        return configuration.outputDirectory();
+        return String.join(".", names) + ".json";
+    }
+
+    private String typeDisplayName(TypeElement type, Elements elements) {
+        String qualifiedName = type.getQualifiedName().toString();
+        PackageElement pkg = elements.getPackageOf(type);
+        if (pkg != null) {
+            String packageName = pkg.getQualifiedName().toString();
+            if (!packageName.isEmpty() && qualifiedName.startsWith(packageName + ".")) {
+                return qualifiedName.substring(packageName.length() + 1);
+            }
+        }
+        return qualifiedName;
     }
 
     private void createDirectories(Path directory) {
