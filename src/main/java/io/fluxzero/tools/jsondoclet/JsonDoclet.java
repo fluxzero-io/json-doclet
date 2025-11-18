@@ -1,11 +1,11 @@
-package io.fluxzero.jsondoclet;
+package io.fluxzero.tools.jsondoclet;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import io.fluxzero.jsondoclet.config.DocletConfiguration;
-import io.fluxzero.jsondoclet.core.DocGenerationTask;
+import io.fluxzero.tools.jsondoclet.config.DocletConfiguration;
+import io.fluxzero.tools.jsondoclet.core.DocGenerationTask;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;

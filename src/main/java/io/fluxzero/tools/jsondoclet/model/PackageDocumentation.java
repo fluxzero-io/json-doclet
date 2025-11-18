@@ -1,4 +1,4 @@
-package io.fluxzero.jsondoclet.model;
+package io.fluxzero.tools.jsondoclet.model;
 
 /**
  * Minimal representation of package-level documentation.

@@ -1,4 +1,4 @@
-package io.fluxzero.jsondoclet.model;
+package io.fluxzero.tools.jsondoclet.model;
 
 import java.util.ArrayList;
 import java.util.Collections;

@@ -1,4 +1,4 @@
-package io.fluxzero.jsondoclet.config;
+package io.fluxzero.tools.jsondoclet.config;
 
 import java.nio.file.Path;
 

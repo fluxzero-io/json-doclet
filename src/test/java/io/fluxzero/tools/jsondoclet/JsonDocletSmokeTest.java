@@ -1,4 +1,4 @@
-package io.fluxzero.jsondoclet;
+package io.fluxzero.tools.jsondoclet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

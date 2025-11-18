@@ -81,7 +81,7 @@ publishing {
 signing {
     // Use environment variables for signing in CI
     val signingKey = System.getenv("OSSRH_SIGNING_KEY")
-    val signingPassword = System.getenv("OSSRH_SIGNING_PASSWORD")
+    val signingPassword = System.getenv("OSSRH_SIGNING_PASSPHRASE")
 
     if (signingKey != null && signingPassword != null) {
         useInMemoryPgpKeys(signingKey, signingPassword)

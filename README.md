@@ -109,7 +109,7 @@ Invoke the JDK `javadoc` tool and point it at the doclet jar:
 ```bash
 javadoc \
   -docletpath build/libs/json-doclet-0.1.0-SNAPSHOT.jar \
-  -doclet io.fluxzero.jsondoclet.JsonDoclet \
+  -doclet io.fluxzero.tools.jsondoclet.JsonDoclet \
   -d build/json-docs \
   --pretty \
   --include-private \
@@ -130,7 +130,7 @@ You can integrate the doclet in a Gradle Java project by configuring the `javado
 tasks.javadoc {
     val docletJar = tasks.named<Jar>("jar")
     options.docletpath = files(docletJar)
-    options.doclet = "io.fluxzero.jsondoclet.JsonDoclet"
+    options.doclet = "io.fluxzero.tools.jsondoclet.JsonDoclet"
     options.addStringOption("--pretty", "")
     options.addStringOption("-d", layout.buildDirectory.dir("json-docs").get().asFile.absolutePath)
 }
@@ -150,7 +150,7 @@ For Maven builds, wire the doclet into the `maven-javadoc-plugin`. Point the plu
       <artifactId>maven-javadoc-plugin</artifactId>
       <version>3.6.3</version>
       <configuration>
-        <doclet>io.fluxzero.jsondoclet.JsonDoclet</doclet>
+        <doclet>io.fluxzero.tools.jsondoclet.JsonDoclet</doclet>
         <docletPath>${project.basedir}/tools/json-doclet-0.1.0.jar</docletPath>
         <additionalOptions>
           <additionalOption>--pretty</additionalOption>
@@ -219,7 +219,7 @@ jobs:
           DOCLET_JAR=$(ls tools/json-doclet-*.jar | head -n 1)
           javadoc \
             -docletpath "$DOCLET_JAR" \
-            -doclet io.fluxzero.jsondoclet.JsonDoclet \
+            -doclet io.fluxzero.tools.jsondoclet.JsonDoclet \
             -d build/json-docs \
             --pretty \
             $(find src/main/java -name '*.java')

@@ -1,6 +1,6 @@
-package io.fluxzero.jsondoclet.util;
+package io.fluxzero.tools.jsondoclet.util;
 
-import io.fluxzero.jsondoclet.model.DirectoryIndex;
+import io.fluxzero.tools.jsondoclet.model.DirectoryIndex;
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Array;

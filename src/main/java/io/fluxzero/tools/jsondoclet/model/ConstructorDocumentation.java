@@ -1,6 +1,6 @@
-package io.fluxzero.jsondoclet.model;
+package io.fluxzero.tools.jsondoclet.model;
 
-import io.fluxzero.jsondoclet.model.MethodDocumentation.MethodParameter;
+import io.fluxzero.tools.jsondoclet.model.MethodDocumentation.MethodParameter;
 import java.util.List;
 
 /**
