@@ -1,9 +1,10 @@
 plugins {
     java
     `maven-publish`
+    signing
 }
 
-group = "io.fluxzero"
+group = "io.fluxzero.tools"
 
 val resolvedVersion: String = (findProperty("releaseVersion")?.toString()
         ?: System.getenv("RELEASE_VERSION")
@@ -46,6 +47,14 @@ publishing {
                     }
                 }
 
+                developers {
+                    developer {
+                        id.set("fluxzero")
+                        name.set("Fluxzero")
+                        email.set("info@fluxzero.io")
+                    }
+                }
+
                 scm {
                     url.set("https://github.com/fluxzero/json-doclet")
                     connection.set("scm:git:git://github.com/fluxzero/json-doclet.git")
@@ -57,19 +66,28 @@ publishing {
 
     repositories {
         maven {
-            name = "GitHubPackages"
-            val githubRepository = (findProperty("githubRepository") as String?)
-                ?: System.getenv("GITHUB_REPOSITORY")
-                ?: "fluxzero/json-doclet"
-            url = uri("https://maven.pkg.github.com/$githubRepository")
+            name = "OSSRH"
+            val releasesRepoUrl = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            val snapshotsRepoUrl = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+            url = if (version.toString().endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl
             credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                    ?: (findProperty("gpr.user") as String?)
-                password = System.getenv("GITHUB_TOKEN")
-                    ?: (findProperty("gpr.key") as String?)
+                username = System.getenv("OSSRH_USERNAME") ?: findProperty("ossrhUsername") as String?
+                password = System.getenv("OSSRH_PASSWORD") ?: findProperty("ossrhPassword") as String?
             }
         }
     }
+}
+
+signing {
+    // Use environment variables for signing in CI
+    val signingKey = System.getenv("OSSRH_SIGNING_KEY")
+    val signingPassword = System.getenv("OSSRH_SIGNING_PASSWORD")
+
+    if (signingKey != null && signingPassword != null) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    }
+
+    sign(publishing.publications["mavenJava"])
 }
 
 tasks.withType<JavaCompile>().configureEach {

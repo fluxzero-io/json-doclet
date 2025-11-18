@@ -49,23 +49,40 @@ You can download the latest release from the **Releases** page or programmatical
 
 To run locally with a specific version, grab the jar from the release and invoke `javadoc` as shown below.
 
-### GitHub Packages
+#### Required GitHub Secrets for Publishing
 
-Each release also publishes the doclet to the GitHub Packages Maven registry under the coordinates `io.fluxzero:json-doclet`.
+The release workflow publishes to Maven Central, which requires the following GitHub repository secrets to be configured:
 
-Add the GitHub Packages repository to your build and authenticate with a personal access token (at minimum the `read:packages` scope) or a GitHub Actions token.
+1. **OSSRH_USERNAME**: Your Sonatype JIRA username
+2. **OSSRH_PASSWORD**: Your Sonatype JIRA password
+3. **SIGNING_KEY**: Your GPG private key in ASCII-armored format
+4. **SIGNING_PASSWORD**: The passphrase for your GPG key
+
+To set up Maven Central publishing:
+
+1. Create a Sonatype JIRA account at https://issues.sonatype.org
+2. Request access to the `io.fluxzero` groupId (or your own groupId)
+3. Generate a GPG key pair:
+   ```bash
+   gpg --gen-key
+   ```
+4. Export your private key in ASCII-armored format:
+   ```bash
+   gpg --armor --export-secret-keys YOUR_KEY_ID
+   ```
+5. Add the secrets to your GitHub repository under Settings > Secrets and variables > Actions
+
+For more details, see the [Sonatype OSSRH Guide](https://central.sonatype.org/publish/publish-guide/).
+
+### Maven Central
+
+Each release also publishes the doclet to Maven Central under the coordinates `io.fluxzero:json-doclet`.
 
 Gradle (Kotlin DSL):
 
 ```kotlin
 repositories {
-    maven {
-        url = uri("https://maven.pkg.github.com/fluxzero/json-doclet")
-        credentials {
-            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
-            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
+    mavenCentral()
 }
 
 dependencies {
@@ -76,13 +93,6 @@ dependencies {
 Maven:
 
 ```xml
-<repositories>
-  <repository>
-    <id>fluxzero-json-doclet</id>
-    <url>https://maven.pkg.github.com/fluxzero/json-doclet</url>
-  </repository>
-</repositories>
-
 <dependencies>
   <dependency>
     <groupId>io.fluxzero</groupId>
@@ -91,8 +101,6 @@ Maven:
   </dependency>
 </dependencies>
 ```
-
-Supply credentials through `~/.m2/settings.xml`, environment variables, or your CI secrets. When running inside GitHub Actions, `GITHUB_TOKEN` and `GITHUB_ACTOR` are already available.
 
 ### Running the Doclet
 

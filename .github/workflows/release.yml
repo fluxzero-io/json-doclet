@@ -84,11 +84,13 @@ jobs:
       - name: Build project
         run: ./gradlew clean build -PreleaseVersion=$RELEASE_VERSION
 
-      - name: Publish to GitHub Packages
+      - name: Publish to Maven Central
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
-        run: ./gradlew publish -PreleaseVersion=$RELEASE_VERSION
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          OSSRH_SIGNING_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
+          OSSRH_SIGNING_PASSWORD: ${{ secrets.OSSRH_SIGNING_PASSWORD }}
+        run: ./gradlew publishMavenJavaPublicationToOSSRHRepository -PreleaseVersion=$RELEASE_VERSION
 
       - name: Prepare release assets
         id: assets
