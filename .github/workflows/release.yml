@@ -89,7 +89,7 @@ jobs:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           OSSRH_SIGNING_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
-          OSSRH_SIGNING_PASSWORD: ${{ secrets.OSSRH_SIGNING_PASSWORD }}
+          OSSRH_SIGNING_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
         run: ./gradlew publishMavenJavaPublicationToOSSRHRepository -PreleaseVersion=$RELEASE_VERSION
 
       - name: Prepare release assets

@@ -83,11 +83,18 @@ signing {
     val signingKey = System.getenv("OSSRH_SIGNING_KEY")
     val signingPassword = System.getenv("OSSRH_SIGNING_PASSPHRASE")
 
+    // Only configure signing if credentials are available
     if (signingKey != null && signingPassword != null) {
         useInMemoryPgpKeys(signingKey, signingPassword)
+        sign(publishing.publications["mavenJava"])
     }
+}
 
-    sign(publishing.publications["mavenJava"])
+// Make signing required only when credentials are present
+tasks.withType<Sign>().configureEach {
+    onlyIf {
+        System.getenv("OSSRH_SIGNING_KEY") != null
+    }
 }
 
 tasks.withType<JavaCompile>().configureEach {

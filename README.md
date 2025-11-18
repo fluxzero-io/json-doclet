@@ -55,8 +55,8 @@ The release workflow publishes to Maven Central, which requires the following Gi
 
 1. **OSSRH_USERNAME**: Your Sonatype JIRA username
 2. **OSSRH_PASSWORD**: Your Sonatype JIRA password
-3. **SIGNING_KEY**: Your GPG private key in ASCII-armored format
-4. **SIGNING_PASSWORD**: The passphrase for your GPG key
+3. **OSSRH_SIGNING_KEY**: Your GPG private key in ASCII-armored format
+4. **OSSRH_SIGNING_PASSPHRASE**: The passphrase for your GPG key
 
 To set up Maven Central publishing:
 
