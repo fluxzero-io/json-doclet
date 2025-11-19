@@ -31,6 +31,7 @@ files:
 signing:
   active: ALWAYS
   armored: true
+  files: true
 
 deploy:
   maven:
@@ -40,3 +41,5 @@ deploy:
         url: https://central.sonatype.com/api/v1/publisher
         stagingRepositories:
           - build/staging-deploy
+        applyMavenCentralRules: true
+        retryDelay: 60

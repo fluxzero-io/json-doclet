@@ -84,17 +84,23 @@ jobs:
       - name: Build project
         run: ./gradlew -PreleaseVersion=$RELEASE_VERSION clean build
 
-      - name: Publish to Maven Central with JReleaser
+      - name: Publish Maven artifacts to staging
+        run: ./gradlew -PreleaseVersion=$RELEASE_VERSION publish
+
+      - name: Deploy to Maven Central with JReleaser
         env:
           JRELEASER_MAVENCENTRAL_SONATYPE_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           JRELEASER_MAVENCENTRAL_SONATYPE_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
+          JRELEASER_PROJECT_VERSION: ${{ env.RELEASE_VERSION }}
+        run: ./gradlew -PreleaseVersion=$RELEASE_VERSION jreleaserDeploy
+
+      - name: Create GitHub Release with JReleaser
+        env:
           JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           JRELEASER_PROJECT_VERSION: ${{ env.RELEASE_VERSION }}
-        run: |
-          ./gradlew -PreleaseVersion=$RELEASE_VERSION publish
-          ./gradlew -PreleaseVersion=$RELEASE_VERSION jreleaserFullRelease
+        run: ./gradlew -PreleaseVersion=$RELEASE_VERSION jreleaserRelease
 
       - name: JReleaser output
         if: always()
