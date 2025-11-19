@@ -17,15 +17,15 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
 ### Prerequisites
 
 - JDK 17 or newer (the doclet uses the modern `jdk.javadoc.doclet` API and records).
-- Gradle 8+ (a wrapper script is provided).
+- Maven 3.8+
 
 ### Build
 
 ```bash
-./gradlew build
+mvn clean package
 ```
 
-The build produces a jar containing the doclet under `build/libs/`.
+The build produces a jar containing the doclet under `target/`.
 
 ### GitHub Releases
 
@@ -51,7 +51,7 @@ To run locally with a specific version, grab the jar from the release and invoke
 
 #### Required GitHub Secrets for Publishing
 
-The release workflow uses JReleaser to publish to Maven Central via the Sonatype Central Portal. Configure these GitHub repository secrets:
+The release workflow uses the Central Publishing Maven Plugin to publish to Maven Central. Configure these GitHub repository secrets:
 
 1. **CENTRAL_USERNAME**: Your Sonatype Central Portal username (token username)
 2. **CENTRAL_PASSWORD**: Your Sonatype Central Portal password (token password)
@@ -113,9 +113,9 @@ Invoke the JDK `javadoc` tool and point it at the doclet jar:
 
 ```bash
 javadoc \
-  -docletpath build/libs/json-doclet-0.1.0-SNAPSHOT.jar \
+  -docletpath target/json-doclet-0.1.0-SNAPSHOT.jar \
   -doclet io.fluxzero.tools.jsondoclet.JsonDoclet \
-  -d build/json-docs \
+  -d target/json-docs \
   --pretty \
   --include-private \
   $(find src/main/java -name '*.java')
@@ -123,7 +123,7 @@ javadoc \
 
 Key options:
 
-- `-d <dir>` (standard Javadoc option): output directory for generated JSON (defaults to `build/json-doclet`).
+- `-d <dir>` (standard Javadoc option): output directory for generated JSON (defaults to `target/json-doclet`).
 - `--pretty`: enables pretty-printed JSON (otherwise compact).
 - `--include-private`: include private members in the output (defaults to public and protected only).
 
@@ -182,13 +182,13 @@ Adjust the jar path and options to match your build; if you publish the doclet t
 A smoke test lives at `src/test/java/io/fluxzero/jsondoclet/JsonDocletSmokeTest.java`. To run the test suite:
 
 ```bash
-./gradlew test
+mvn test
 ```
 
 If you intentionally change the JSON schema, regenerate the golden fixtures with:
 
 ```bash
-./gradlew test -Djsondoclet.updateExpected=true
+mvn test -Djsondoclet.updateExpected=true
 ```
 
 Review the resulting diffs under `src/test/resources/example/expected` and commit as needed.

@@ -79,34 +79,30 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-          cache: gradle
+          cache: maven
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.OSSRH_SIGNING_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
-      - name: Build project
-        run: ./gradlew -PreleaseVersion=$RELEASE_VERSION clean build
-
-      - name: Publish Maven artifacts to staging
-        run: ./gradlew -PreleaseVersion=$RELEASE_VERSION publish
-
-      - name: Deploy to Maven Central with JReleaser
+      - name: Build and deploy to Maven Central
         env:
-          JRELEASER_MAVENCENTRAL_SONATYPE_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          JRELEASER_MAVENCENTRAL_SONATYPE_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          JRELEASER_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
-          JRELEASER_GPG_SECRET_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
-          JRELEASER_PROJECT_VERSION: ${{ env.RELEASE_VERSION }}
-        run: ./gradlew -PreleaseVersion=$RELEASE_VERSION jreleaserDeploy
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
+        run: mvn -B clean deploy -Drevision=$RELEASE_VERSION
 
-      - name: Create GitHub Release with JReleaser
-        env:
-          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JRELEASER_PROJECT_VERSION: ${{ env.RELEASE_VERSION }}
-        run: ./gradlew -PreleaseVersion=$RELEASE_VERSION jreleaserRelease
-
-      - name: JReleaser output
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: jreleaser-logs
-          path: |
-            build/jreleaser/trace.log
-            build/jreleaser/output.properties
+          tag_name: v${{ env.RELEASE_VERSION }}
+          name: v${{ env.RELEASE_VERSION }}
+          body: ${{ needs.determine-version.outputs.changelog }}
+          files: |
+            target/json-doclet-${{ env.RELEASE_VERSION }}.jar
+            src/main/resources/json-doclet.schema.json
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
