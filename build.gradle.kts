@@ -2,6 +2,7 @@ plugins {
     java
     `maven-publish`
     signing
+    id("org.jreleaser") version "1.19.0"
 }
 
 group = "io.fluxzero.tools"
@@ -39,6 +40,7 @@ publishing {
                 name.set("json-doclet")
                 description.set("A JSON Schema doclet for Javadoc")
                 url.set("https://github.com/fluxzero/json-doclet")
+                inceptionYear.set("2025")
 
                 licenses {
                     license {
@@ -62,38 +64,6 @@ publishing {
                 }
             }
         }
-    }
-
-    repositories {
-        maven {
-            name = "OSSRH"
-            val releasesRepoUrl = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
-            val snapshotsRepoUrl = uri("https://oss.sonatype.org/content/repositories/snapshots/")
-            url = if (version.toString().endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl
-            credentials {
-                username = System.getenv("OSSRH_USERNAME") ?: findProperty("ossrhUsername") as String?
-                password = System.getenv("OSSRH_PASSWORD") ?: findProperty("ossrhPassword") as String?
-            }
-        }
-    }
-}
-
-signing {
-    // Use environment variables for signing in CI
-    val signingKey = System.getenv("OSSRH_SIGNING_KEY")
-    val signingPassword = System.getenv("OSSRH_SIGNING_PASSPHRASE")
-
-    // Only configure signing if credentials are available
-    if (signingKey != null && signingPassword != null) {
-        useInMemoryPgpKeys(signingKey, signingPassword)
-        sign(publishing.publications["mavenJava"])
-    }
-}
-
-// Make signing required only when credentials are present
-tasks.withType<Sign>().configureEach {
-    onlyIf {
-        System.getenv("OSSRH_SIGNING_KEY") != null
     }
 }
 

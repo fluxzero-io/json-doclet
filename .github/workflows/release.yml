@@ -82,87 +82,25 @@ jobs:
           cache: gradle
 
       - name: Build project
-        run: ./gradlew clean build -PreleaseVersion=$RELEASE_VERSION
+        run: ./gradlew -PreleaseVersion=$RELEASE_VERSION clean build
 
-      - name: Publish to Maven Central
+      - name: Publish to Maven Central with JReleaser
         env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          OSSRH_SIGNING_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
-          OSSRH_SIGNING_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
-        run: ./gradlew publishMavenJavaPublicationToOSSRHRepository -PreleaseVersion=$RELEASE_VERSION
-
-      - name: Prepare release assets
-        id: assets
+          JRELEASER_MAVENCENTRAL_SONATYPE_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          JRELEASER_MAVENCENTRAL_SONATYPE_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          JRELEASER_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
+          JRELEASER_GPG_SECRET_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
+          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JRELEASER_PROJECT_VERSION: ${{ env.RELEASE_VERSION }}
         run: |
-          set -eo pipefail
-          JAR="build/libs/json-doclet-${RELEASE_VERSION}.jar"
-          if [ ! -f "$JAR" ]; then
-            echo "Expected jar $JAR not found" >&2
-            ls build/libs
-            exit 1
-          fi
-          ASSETS_DIR="build/release-assets"
-          mkdir -p "$ASSETS_DIR"
-          JAR_OUT="$ASSETS_DIR/json-doclet-${RELEASE_VERSION}.jar"
-          cp "$JAR" "$JAR_OUT"
-          SCHEMA_OUT="$ASSETS_DIR/json-doclet-${RELEASE_VERSION}.schema.json"
-          cp src/main/resources/json-doclet.schema.json "$SCHEMA_OUT"
-          echo "jar=$JAR_OUT" >> "$GITHUB_OUTPUT"
-          echo "schema=$SCHEMA_OUT" >> "$GITHUB_OUTPUT"
+          ./gradlew -PreleaseVersion=$RELEASE_VERSION publish
+          ./gradlew -PreleaseVersion=$RELEASE_VERSION jreleaserFullRelease
 
-      - name: Upload release assets
+      - name: JReleaser output
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: json-doclet-assets
-          path: build/release-assets/
-
-  release:
-    needs: [determine-version, build]
-    if: needs.determine-version.outputs.skipped != 'true'
-    runs-on: ubuntu-latest
-    env:
-      RELEASE_VERSION: ${{ needs.determine-version.outputs.release_version }}
-      RELEASE_TAG: ${{ needs.determine-version.outputs.new_tag }}
-      CHANGELOG: ${{ needs.determine-version.outputs.changelog }}
-    steps:
-      - name: Download release assets
-        uses: actions/download-artifact@v4
-        with:
-          name: json-doclet-assets
-          path: dist
-
-      - name: Locate downloaded assets
-        id: locate
-        run: |
-          set -eo pipefail
-          JAR="dist/json-doclet-${RELEASE_VERSION}.jar"
-          if [ ! -f "$JAR" ]; then
-            echo "Downloaded jar $JAR not found" >&2
-            ls dist
-            exit 1
-          fi
-          SCHEMA="dist/json-doclet-${RELEASE_VERSION}.schema.json"
-          if [ ! -f "$SCHEMA" ]; then
-            echo "Downloaded schema $SCHEMA not found" >&2
-            ls dist
-            exit 1
-          fi
-          echo "jar=$JAR" >> "$GITHUB_OUTPUT"
-          echo "schema=$SCHEMA" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub release and attach assets
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          name: ${{ env.RELEASE_TAG }}
-          body: ${{ env.CHANGELOG }}
-          files: |
-            ${{ steps.locate.outputs.jar }}
-            ${{ steps.locate.outputs.schema }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: jreleaser-logs
+          path: |
+            build/jreleaser/trace.log
+            build/jreleaser/output.properties

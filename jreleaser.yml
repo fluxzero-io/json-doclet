@@ -1,0 +1,42 @@
+project:
+  name: json-doclet
+  description: A JSON Schema doclet for Javadoc
+  longDescription: JSON Doclet is a custom Javadoc doclet that emits structured JSON instead of the traditional HTML output
+  website: https://github.com/fluxzero/json-doclet
+  authors:
+    - Fluxzero
+  license: Apache-2.0
+  inceptionYear: 2025
+  java:
+    groupId: io.fluxzero.tools
+    version: 17
+
+release:
+  github:
+    owner: fluxzero
+    name: json-doclet
+    overwrite: true
+    changelog:
+      formatted: ALWAYS
+      preset: conventional-commits
+      contributors:
+        enabled: false
+
+files:
+  artifacts:
+    - path: build/libs/{{projectName}}-{{projectVersion}}.jar
+    - path: src/main/resources/json-doclet.schema.json
+      transform: build/release-assets/{{projectName}}-{{projectVersion}}.schema.json
+
+signing:
+  active: ALWAYS
+  armored: true
+
+deploy:
+  maven:
+    mavenCentral:
+      sonatype:
+        active: ALWAYS
+        url: https://central.sonatype.com/api/v1/publisher
+        stagingRepositories:
+          - build/staging-deploy

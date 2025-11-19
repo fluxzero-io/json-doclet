@@ -51,28 +51,33 @@ To run locally with a specific version, grab the jar from the release and invoke
 
 #### Required GitHub Secrets for Publishing
 
-The release workflow publishes to Maven Central, which requires the following GitHub repository secrets to be configured:
+The release workflow uses JReleaser to publish to Maven Central via the Sonatype Central Portal. Configure these GitHub repository secrets:
 
-1. **OSSRH_USERNAME**: Your Sonatype JIRA username
-2. **OSSRH_PASSWORD**: Your Sonatype JIRA password
-3. **OSSRH_SIGNING_KEY**: Your GPG private key in ASCII-armored format
-4. **OSSRH_SIGNING_PASSPHRASE**: The passphrase for your GPG key
+1. **CENTRAL_USERNAME**: Your Sonatype Central Portal username (token username)
+2. **CENTRAL_PASSWORD**: Your Sonatype Central Portal password (token password)
+3. **GPG_PASSPHRASE**: The passphrase for your GPG key
+4. **GPG_SECRET_KEY**: Your GPG private key in ASCII-armored format
 
 To set up Maven Central publishing:
 
-1. Create a Sonatype JIRA account at https://issues.sonatype.org
-2. Request access to the `io.fluxzero` groupId (or your own groupId)
-3. Generate a GPG key pair:
+1. Create an account at https://central.sonatype.com
+2. Verify your namespace (e.g., `io.fluxzero.tools`)
+3. Generate a user token at https://central.sonatype.com/account
+4. Generate a GPG key pair:
    ```bash
    gpg --gen-key
    ```
-4. Export your private key in ASCII-armored format:
+5. Upload your public key to a key server:
+   ```bash
+   gpg --keyserver keys.openpgp.org --send-keys YOUR_KEY_ID
+   ```
+6. Export your private key in ASCII-armored format:
    ```bash
    gpg --armor --export-secret-keys YOUR_KEY_ID
    ```
-5. Add the secrets to your GitHub repository under Settings > Secrets and variables > Actions
+7. Add all secrets to your GitHub repository under Settings > Secrets and variables > Actions
 
-For more details, see the [Sonatype OSSRH Guide](https://central.sonatype.org/publish/publish-guide/).
+For more details, see the [Central Portal Guide](https://central.sonatype.org/register/central-portal/).
 
 ### Maven Central
 
