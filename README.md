@@ -51,12 +51,12 @@ To run locally with a specific version, grab the jar from the release and invoke
 
 #### Required GitHub Secrets for Publishing
 
-The release workflow uses the Central Publishing Maven Plugin to publish to Maven Central. Configure these GitHub repository secrets:
+The release workflow first publishes signed artifacts, sources and Javadoc to Fluxzero Packages, then uses the Central Publishing Maven Plugin to publish to Maven Central. Configure these GitHub repository secrets:
 
-1. **CENTRAL_USERNAME**: Your Sonatype Central Portal username (token username)
-2. **CENTRAL_PASSWORD**: Your Sonatype Central Portal password (token password)
-3. **GPG_PASSPHRASE**: The passphrase for your GPG key
-4. **GPG_SECRET_KEY**: Your GPG private key in ASCII-armored format
+1. **OSSRH_USERNAME**: Your Sonatype Central Portal username (token username)
+2. **OSSRH_PASSWORD**: Your Sonatype Central Portal password (token password)
+3. **OSSRH_SIGNING_PASSPHRASE**: The passphrase for your GPG key
+4. **OSSRH_SIGNING_KEY**: Your GPG private key in ASCII-armored format
 
 To set up Maven Central publishing:
 
@@ -79,28 +79,51 @@ To set up Maven Central publishing:
 
 For more details, see the [Central Portal Guide](https://central.sonatype.org/register/central-portal/).
 
-### Maven Central
+Fluxzero Packages needs no long-lived publishing secret. The build job requests a
+short-lived GitHub OIDC token immediately before deployment, with audience
+`https://packages.fluxzero.io/publish/maven` and `id-token: write`. Maven server
+`fluxzero` uses username `github-actions` and that masked token as its password.
+The existing signing secrets supply `MAVEN_GPG_KEY` and `MAVEN_GPG_PASSPHRASE`
+to the Bouncy Castle signer in both publication steps.
 
-Each release also publishes the doclet to Maven Central under the coordinates `io.fluxzero:json-doclet`.
+`./mvnw -P sign deploy` uploads to Fluxzero Packages;
+`./mvnw -P sign,central deploy` publishes to Central with automatic publication
+and completion polling. Releases and tags are immutable: after a partial failure,
+recover using the original artifacts or publish a new version; do not rebuild and
+overwrite an existing release.
+
+### Maven repositories
+
+Each release publishes to Fluxzero Packages first and Maven Central afterward under
+the coordinates `io.fluxzero.tools:json-doclet`. Downloads use
+`https://packages.fluxzero.io/maven`; `/publish/maven` is only for uploads.
 
 Gradle (Kotlin DSL):
 
 ```kotlin
 repositories {
+    maven { url = uri("https://packages.fluxzero.io/maven") }
     mavenCentral()
 }
 
 dependencies {
-    implementation("io.fluxzero:json-doclet:<version>")
+    implementation("io.fluxzero.tools:json-doclet:<version>")
 }
 ```
 
 Maven:
 
 ```xml
+<repositories>
+  <repository>
+    <id>fluxzero</id>
+    <url>https://packages.fluxzero.io/maven</url>
+    <snapshots><enabled>false</enabled></snapshots>
+  </repository>
+</repositories>
 <dependencies>
   <dependency>
-    <groupId>io.fluxzero</groupId>
+    <groupId>io.fluxzero.tools</groupId>
     <artifactId>json-doclet</artifactId>
     <version>{version}</version>
   </dependency>

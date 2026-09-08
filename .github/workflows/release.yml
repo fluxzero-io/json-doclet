@@ -68,6 +68,9 @@ jobs:
     needs: determine-version
     if: needs.determine-version.outputs.skipped != 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     env:
       RELEASE_VERSION: ${{ needs.determine-version.outputs.release_version }}
     steps:
@@ -90,16 +93,53 @@ jobs:
         run: |
           ./mvnw -B versions:set -DnewVersion=${{ env.RELEASE_VERSION }}
 
-      - name: Build and deploy to Maven Central
+      - name: Configure Fluxzero Maven server
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          import xml.etree.ElementTree as ET
+          path = os.path.expanduser("~/.m2/settings.xml")
+          tree = ET.parse(path)
+          namespace = "http://maven.apache.org/SETTINGS/1.0.0"
+          ET.register_namespace("", namespace)
+          servers = tree.getroot().find(f"{{{namespace}}}servers")
+          server = ET.SubElement(servers, f"{{{namespace}}}server")
+          for key, value in {
+              "id": "fluxzero",
+              "username": "github-actions",
+              "password": "${env.MAVEN_DEPLOY_TOKEN}",
+          }.items():
+              ET.SubElement(server, f"{{{namespace}}}{key}").text = value
+          tree.write(path, encoding="utf-8", xml_declaration=True)
+          PYTHON
+
+      - name: Build and test release
+        run: ./mvnw -B clean verify
+
+      - name: Deploy to Fluxzero Packages with GitHub OIDC
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
+          MAVEN_GPG_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
+        run: |
+          set +x
+          token=$(curl --fail --silent --show-error --get \
+            --data-urlencode 'audience=https://packages.fluxzero.io/publish/maven' \
+            --header "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -er '.value')
+          echo "::add-mask::$token"
+          export MAVEN_DEPLOY_TOKEN="$token"
+          ./mvnw -B -P sign deploy -DskipTests
+
+      - name: Deploy to Maven Central
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
           MAVEN_GPG_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
-        run: ./mvnw -B -P sign clean deploy
+        run: ./mvnw -B -P sign,central deploy -DskipTests
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.RELEASE_VERSION }}
           name: v${{ env.RELEASE_VERSION }}
