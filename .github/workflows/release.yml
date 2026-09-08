@@ -76,6 +76,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set release timestamp
+        run: echo "RELEASE_TIMESTAMP=$(git show -s --format=%ct HEAD)" >> "$GITHUB_ENV"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -114,7 +116,7 @@ jobs:
           PYTHON
 
       - name: Build and test release
-        run: ./mvnw -B clean verify
+        run: ./mvnw -B clean verify -Dproject.build.outputTimestamp="$RELEASE_TIMESTAMP"
 
       - name: Deploy to Fluxzero Packages with GitHub OIDC
         env:
@@ -128,7 +130,7 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -er '.value')
           echo "::add-mask::$token"
           export MAVEN_DEPLOY_TOKEN="$token"
-          ./mvnw -B -P sign deploy -DskipTests
+          ./mvnw -B -P sign deploy -DskipTests -Dproject.build.outputTimestamp="$RELEASE_TIMESTAMP"
 
       - name: Deploy to Maven Central
         env:
@@ -136,7 +138,7 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
           MAVEN_GPG_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
-        run: ./mvnw -B -P sign,central deploy -DskipTests
+        run: ./mvnw -B -P sign,central deploy -DskipTests -Dproject.build.outputTimestamp="$RELEASE_TIMESTAMP"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
