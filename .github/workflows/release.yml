@@ -116,7 +116,7 @@ jobs:
           PYTHON
 
       - name: Build and test release
-        run: ./mvnw -B clean verify -Dproject.build.outputTimestamp="$RELEASE_TIMESTAMP"
+        run: ./mvnw -B clean verify
 
       - name: Deploy to Fluxzero Packages with GitHub OIDC
         env:
@@ -130,7 +130,7 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -er '.value')
           echo "::add-mask::$token"
           export MAVEN_DEPLOY_TOKEN="$token"
-          ./mvnw -B -P sign deploy -DskipTests -Dproject.build.outputTimestamp="$RELEASE_TIMESTAMP"
+          ./mvnw -B -P sign deploy -DskipTests
 
       - name: Deploy to Maven Central
         env:
@@ -138,7 +138,7 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
           MAVEN_GPG_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
-        run: ./mvnw -B -P sign,central deploy -DskipTests -Dproject.build.outputTimestamp="$RELEASE_TIMESTAMP"
+        run: ./mvnw -B -P sign,central deploy -DskipTests
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
