@@ -51,14 +51,14 @@ To run locally with a specific version, grab the jar from the release and invoke
 
 #### Required GitHub Secrets for Publishing
 
-The release workflow first publishes signed artifacts, sources and Javadoc to Fluxzero Packages, then uses the Central Publishing Maven Plugin to publish to Maven Central. Configure these GitHub repository secrets:
+The release workflow publishes signed artifacts, sources and Javadoc to Fluxzero Packages. For releases started before 1 October 2026, it then uses the Central Publishing Maven Plugin to publish to Maven Central. Configure these GitHub repository secrets:
 
 1. **OSSRH_USERNAME**: Your Sonatype Central Portal username (token username)
 2. **OSSRH_PASSWORD**: Your Sonatype Central Portal password (token password)
 3. **OSSRH_SIGNING_PASSPHRASE**: The passphrase for your GPG key
 4. **OSSRH_SIGNING_KEY**: Your GPG private key in ASCII-armored format
 
-To set up Maven Central publishing:
+For Maven Central publishing before the cutoff and pre-cutoff recovery:
 
 1. Create an account at https://central.sonatype.com
 2. Verify your namespace (e.g., `io.fluxzero.tools`)
@@ -88,14 +88,15 @@ to the Bouncy Castle signer in both publication steps.
 
 `./mvnw -P sign deploy` uploads to Fluxzero Packages;
 `./mvnw -P sign,central deploy` publishes to Central with automatic publication
-and completion polling. Releases and tags are immutable: after a partial failure,
+and completion polling for pre-cutoff recovery. Releases and tags are immutable: after a partial failure,
 recover using the original artifacts or publish a new version; do not rebuild and
 overwrite an existing release.
 
 ### Maven repositories
 
-Each release publishes to Fluxzero Packages first and Maven Central afterward under
-the coordinates `io.fluxzero.tools:json-doclet`. Downloads use
+Each release publishes under the coordinates `io.fluxzero.tools:json-doclet` to
+Fluxzero Packages. Releases started before 1 October 2026 are also published to Maven
+Central; existing Central releases remain available afterward. Downloads use
 `https://packages.fluxzero.io/maven`; `/publish/maven` is only for uploads.
 
 Gradle (Kotlin DSL):
