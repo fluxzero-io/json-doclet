@@ -130,7 +130,11 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -er '.value')
           echo "::add-mask::$token"
           export MAVEN_DEPLOY_TOKEN="$token"
-          ./mvnw -B -P sign deploy -DskipTests
+          set -o pipefail
+          ./mvnw -B -P sign deploy -DskipTests | tee "$RUNNER_TEMP/packages-deploy.log"
+
+      - name: Collect exact Maven release assets from Packages
+        run: python3 .github/scripts/collect-maven-assets.py --deploy-log "$RUNNER_TEMP/packages-deploy.log"
 
       - name: Determine Maven Central publication window
         id: central_window
@@ -163,8 +167,9 @@ jobs:
           tag_name: v${{ env.RELEASE_VERSION }}
           name: v${{ env.RELEASE_VERSION }}
           body: ${{ needs.determine-version.outputs.changelog }}
+          fail_on_unmatched_files: true
           files: |
-            target/json-doclet-${{ env.RELEASE_VERSION }}.jar
+            maven-release-assets/*
             src/main/resources/json-doclet.schema.json
           draft: false
           prerelease: false
