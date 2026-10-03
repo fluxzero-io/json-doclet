@@ -51,52 +51,26 @@ To run locally with a specific version, grab the jar from the release and invoke
 
 #### Required GitHub Secrets for Publishing
 
-The release workflow publishes signed artifacts, sources and Javadoc to Fluxzero Packages. For releases started before 1 October 2026, it then uses the Central Publishing Maven Plugin to publish to Maven Central. Configure these GitHub repository secrets:
-
-1. **OSSRH_USERNAME**: Your Sonatype Central Portal username (token username)
-2. **OSSRH_PASSWORD**: Your Sonatype Central Portal password (token password)
-3. **OSSRH_SIGNING_PASSPHRASE**: The passphrase for your GPG key
-4. **OSSRH_SIGNING_KEY**: Your GPG private key in ASCII-armored format
-
-For Maven Central publishing before the cutoff and pre-cutoff recovery:
-
-1. Create an account at https://central.sonatype.com
-2. Verify your namespace (e.g., `io.fluxzero.tools`)
-3. Generate a user token at https://central.sonatype.com/account
-4. Generate a GPG key pair:
-   ```bash
-   gpg --gen-key
-   ```
-5. Upload your public key to a key server:
-   ```bash
-   gpg --keyserver keys.openpgp.org --send-keys YOUR_KEY_ID
-   ```
-6. Export your private key in ASCII-armored format:
-   ```bash
-   gpg --armor --export-secret-keys YOUR_KEY_ID
-   ```
-7. Add all secrets to your GitHub repository under Settings > Secrets and variables > Actions
-
-For more details, see the [Central Portal Guide](https://central.sonatype.org/register/central-portal/).
+The release workflow publishes signed artifacts, sources and Javadoc to Fluxzero Packages.
+Configure `OSSRH_SIGNING_KEY` (ASCII-armored GPG private key) and
+`OSSRH_SIGNING_PASSPHRASE` (its passphrase) as GitHub repository secrets.
 
 Fluxzero Packages needs no long-lived publishing secret. The build job requests a
 short-lived GitHub OIDC token immediately before deployment, with audience
 `https://packages.fluxzero.io/publish/maven` and `id-token: write`. Maven server
 `fluxzero` uses username `github-actions` and that masked token as its password.
 The existing signing secrets supply `MAVEN_GPG_KEY` and `MAVEN_GPG_PASSPHRASE`
-to the Bouncy Castle signer in both publication steps.
+to the Bouncy Castle signer for Packages publication.
 
-`./mvnw -P sign deploy` uploads to Fluxzero Packages;
-`./mvnw -P sign,central deploy` publishes to Central with automatic publication
-and completion polling for pre-cutoff recovery. Releases and tags are immutable: after a partial failure,
+`./mvnw -P sign deploy` uploads to Fluxzero Packages.
+Releases and tags are immutable: after a partial failure,
 recover using the original artifacts or publish a new version; do not rebuild and
 overwrite an existing release.
 
 ### Maven repositories
 
 Each release publishes under the coordinates `io.fluxzero.tools:json-doclet` to
-Fluxzero Packages. Releases started before 1 October 2026 are also published to Maven
-Central; existing Central releases remain available afterward. Downloads use
+Fluxzero Packages. Historical Maven Central releases remain available. Downloads use
 `https://packages.fluxzero.io/maven`; `/publish/maven` is only for uploads.
 
 Gradle (Kotlin DSL):
