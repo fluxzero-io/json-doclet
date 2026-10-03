@@ -85,9 +85,9 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: maven
-          server-id: central
+          server-id: fluxzero
           server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
+          server-password: MAVEN_DEPLOY_TOKEN
           gpg-private-key: ${{ secrets.OSSRH_SIGNING_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
@@ -95,31 +95,12 @@ jobs:
         run: |
           ./mvnw -B versions:set -DnewVersion=${{ env.RELEASE_VERSION }}
 
-      - name: Configure Fluxzero Maven server
-        run: |
-          python3 - <<'PYTHON'
-          import os
-          import xml.etree.ElementTree as ET
-          path = os.path.expanduser("~/.m2/settings.xml")
-          tree = ET.parse(path)
-          namespace = "http://maven.apache.org/SETTINGS/1.0.0"
-          ET.register_namespace("", namespace)
-          servers = tree.getroot().find(f"{{{namespace}}}servers")
-          server = ET.SubElement(servers, f"{{{namespace}}}server")
-          for key, value in {
-              "id": "fluxzero",
-              "username": "github-actions",
-              "password": "${env.MAVEN_DEPLOY_TOKEN}",
-          }.items():
-              ET.SubElement(server, f"{{{namespace}}}{key}").text = value
-          tree.write(path, encoding="utf-8", xml_declaration=True)
-          PYTHON
-
       - name: Build and test release
         run: ./mvnw -B clean verify
 
       - name: Deploy to Fluxzero Packages with GitHub OIDC
         env:
+          MAVEN_USERNAME: github-actions
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
           MAVEN_GPG_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
         run: |
@@ -131,31 +112,6 @@ jobs:
           echo "::add-mask::$token"
           export MAVEN_DEPLOY_TOKEN="$token"
           ./mvnw -B -P sign deploy -DskipTests
-
-      - name: Determine Maven Central publication window
-        id: central_window
-        shell: bash
-        run: |
-          release_date="$(TZ=Europe/Amsterdam date +%F)"
-          if [[ "$release_date" < "2026-10-01" ]]; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            {
-              echo "### Maven Central publication"
-              echo
-              echo "Skipped: releases started on or after 1 October 2026 are published only to https://packages.fluxzero.io/maven."
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Deploy to Maven Central
-        if: steps.central_window.outputs.publish == 'true'
-        env:
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
-          MAVEN_GPG_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
-        run: ./mvnw -B -P sign,central deploy -DskipTests
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
