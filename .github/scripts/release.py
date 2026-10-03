@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import tempfile
 from urllib.error import HTTPError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 DOWNLOAD = 'https://packages.fluxzero.io/maven/'
 UPLOAD = 'https://packages.fluxzero.io/publish/maven'
@@ -38,7 +38,8 @@ def artifact_paths(version):
 
 def remote_bytes(path):
     try:
-        with urlopen(DOWNLOAD + path, timeout=30) as response:
+        request = Request(DOWNLOAD + path, headers={'User-Agent': 'fluxzero-json-doclet-release/1.0'})
+        with urlopen(request, timeout=30) as response:
             return response.read()
     except HTTPError as error:
         if error.code == 404:

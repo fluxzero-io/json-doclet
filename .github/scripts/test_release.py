@@ -37,6 +37,14 @@ class VersionsTest(unittest.TestCase):
     def test_feature_suggestion_keeps_minor_bump(self):
         self.assertEqual('0.1.0', release.choose_version('0.1.0', ['v0.0.15'], lambda _: None))
 
+    def test_packages_requests_identify_the_release_client(self):
+        with patch.object(release, 'urlopen') as fetch:
+            fetch.return_value.__enter__.return_value.read.return_value = b'published'
+            self.assertEqual(b'published', release.remote_bytes('example'))
+            request = fetch.call_args.args[0]
+            self.assertEqual(release.DOWNLOAD + 'example', request.full_url)
+            self.assertEqual('fluxzero-json-doclet-release/1.0', request.get_header('User-agent'))
+
     def test_lookup_errors_do_not_mean_version_is_free(self):
         with patch.object(release, 'urlopen', side_effect=HTTPError('url', 503, 'unavailable', {}, None)):
             with self.assertRaisesRegex(RuntimeError, '503'):
