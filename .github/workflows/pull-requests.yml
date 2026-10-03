@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: doclet-pr-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -21,5 +25,7 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: maven
-      - name: Build and test
-        run: ./mvnw -B clean verify
+      - name: Test release failure boundaries
+        run: python3 -m unittest discover -s .github/scripts -p 'test*.py'
+      - name: Build, test and qualify signed publication without live uploads
+        run: bash .github/scripts/qualify-release.sh

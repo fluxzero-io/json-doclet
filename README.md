@@ -32,8 +32,12 @@ The build produces a jar containing the doclet under `target/`.
 Commits on `main` trigger a GitHub Actions workflow that:
 
 - Analyses commits with `mathieudutour/github-tag-action`, bumping the patch version by default and the minor version when a `feat:` commit has landed since the previous release.
-- Builds the jar with that version embedded.
-- Creates a Git tag and GitHub Release containing the changelog and attaches both the doclet jar and JSON schema assets.
+- Reserves a free version before publication, including checks for partially published versions missing from Maven metadata.
+- Builds and signs once, saving the exact artifacts before uploading to Fluxzero Packages.
+- Verifies the downloaded files and an independent consumer before publishing a GitHub Release with all Maven files and the JSON schema.
+
+Pull requests run the build, tests, signed local publication/replay and an independent consumer without live uploads.
+See [Release operation and recovery](docs/releasing.md) for permissions, reruns and partial-release recovery.
 
 You can download the latest release from the **Releases** page or programmatically in other workflows, for example:
 
@@ -248,13 +252,14 @@ Contributions and feedback are welcome!
 
 Future GitHub Releases also retain the exact files published to Fluxzero
 Packages: POMs, JARs and attached artifacts, signatures, and available checksum
-sidecars. The workflow downloads these bytes from Packages rather than taking
-files from a later Central build. Existing distribution assets are preserved.
+sidecars. The workflow downloads these bytes directly from Packages and compares
+them with the original saved publication. Existing distribution assets are preserved.
 Use an exact asset filename when downloading a particular JAR; a broad `*.jar`
 pattern also matches sources, Javadoc and other modules.
 
 The collector (`.github/scripts/collect-maven-assets.py`) verifies checksums and
-fails on missing required files or duplicate flat asset names. Maven workflows
-obtain the file list from completed deploy transfers. Mutable repository-wide
-`maven-metadata.xml` and directory indexes are not release assets. No manifest,
-archive, historical backfill or restore tool is generated.
+fails on missing required files or duplicate flat asset names. The workflow
+requires the POM, main JAR, sources, Javadoc and their signatures. Mutable
+repository-wide `maven-metadata.xml` and directory indexes are not release assets.
+The original files and their SHA-256 inventory are retained as Actions artifacts
+for safe reruns; no historical backfill is performed.
