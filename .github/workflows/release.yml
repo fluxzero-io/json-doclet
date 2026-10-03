@@ -5,25 +5,26 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+concurrency:
+  group: json-doclet-release
+  cancel-in-progress: false
+
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 jobs:
-  determine-version:
+  version:
+    if: github.ref == 'refs/heads/main' && github.repository == 'fluxzero-io/json-doclet'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
-      release_version: ${{ steps.prepare.outputs.release_version }}
-      new_tag: ${{ steps.prepare.outputs.new_tag }}
-      changelog: ${{ steps.prepare.outputs.changelog }}
-      skipped: ${{ steps.prepare.outputs.skipped }}
+      version: ${{ steps.reserve.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Determine next version (dry run)
+      - name: Suggest semantic version
         id: bump
         uses: mathieudutour/github-tag-action@v6.2
         with:
@@ -32,55 +33,87 @@ jobs:
           default_bump: patch
           custom_release_rules: '[{"type":"feat","release":"minor"}]'
           release_branches: main
-
-      - name: Prepare version outputs
-        id: prepare
+      - name: Reserve a free immutable version
+        id: reserve
         env:
-          NEW_TAG: ${{ steps.bump.outputs.new_tag }}
-          PREVIOUS_TAG: ${{ steps.bump.outputs.tag }}
-          NEW_VERSION: ${{ steps.bump.outputs.new_version }}
-          CHANGELOG: ${{ steps.bump.outputs.changelog }}
+          SUGGESTED_VERSION: ${{ steps.bump.outputs.new_version }}
         run: |
-          set -eo pipefail
-          new_tag="$NEW_TAG"
-          if [ -z "$new_tag" ]; then
-            new_tag="v$NEW_VERSION"
-          fi
-          release_version="$NEW_VERSION"
-          if [ -z "$release_version" ]; then
-            echo "No new version detected" >&2
-            echo "skipped=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$new_tag" = "$PREVIOUS_TAG" ]; then
-            echo "skipped=true" >> "$GITHUB_OUTPUT"
-            echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
-            echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
-            echo "changelog=" >> "$GITHUB_OUTPUT"
-          else
-            echo "skipped=false" >> "$GITHUB_OUTPUT"
-            echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
-            echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
-            printf 'changelog<<EOF\n%s\nEOF\n' "$CHANGELOG" >> "$GITHUB_OUTPUT"
-          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python3 .github/scripts/release.py reserve
 
-  build:
-    needs: determine-version
-    if: needs.determine-version.outputs.skipped != 'true'
+  package:
+    needs: version
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+      actions: read
+    env:
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate the original signed publication on reruns
+        id: saved
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" \
+            --paginate --jq '.artifacts[] | select(.name == "signed-publication" and .expired == false) | .id' \
+            > "$RUNNER_TEMP/publication-artifact-id"
+          if [[ -s "$RUNNER_TEMP/publication-artifact-id" ]]; then
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+            gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+              --name signed-publication --dir publication
+          fi
+      - name: Refuse rebuilding a partially published version
+        if: steps.saved.outputs.exists != 'true'
+        run: python3 .github/scripts/release.py assert-unpublished
+      - uses: actions/setup-java@v4
+        if: steps.saved.outputs.exists != 'true'
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Set reproducible build identity
+        if: steps.saved.outputs.exists != 'true'
+        run: |
+          echo "RELEASE_TIMESTAMP=$(git show -s --format=%ct HEAD)" >> "$GITHUB_ENV"
+          ./mvnw -B versions:set -DnewVersion="$RELEASE_VERSION" -DgenerateBackupPoms=false
+      - name: Build, test and sign once into a local Maven repository
+        if: steps.saved.outputs.exists != 'true'
+        env:
+          MAVEN_GPG_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
+        run: |
+          ./mvnw -B -Psign clean deploy \
+            "-DaltDeploymentRepository=fluxzero::file://$PWD/target/publication-repository"
+          python3 .github/scripts/release.py bundle
+      - name: Validate publication identity and saved bytes
+        run: python3 .github/scripts/release.py validate
+      - name: Preserve signed files before any public upload
+        if: steps.saved.outputs.exists != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-publication
+          path: publication/
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    needs: [version, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
       id-token: write
     env:
-      RELEASE_VERSION: ${{ needs.determine-version.outputs.release_version }}
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set release timestamp
-        run: echo "RELEASE_TIMESTAMP=$(git show -s --format=%ct HEAD)" >> "$GITHUB_ENV"
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-publication
+          path: publication
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
@@ -88,21 +121,11 @@ jobs:
           server-id: fluxzero
           server-username: MAVEN_USERNAME
           server-password: MAVEN_DEPLOY_TOKEN
-          gpg-private-key: ${{ secrets.OSSRH_SIGNING_KEY }}
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE
-
-      - name: Set maven version
-        run: |
-          ./mvnw -B versions:set -DnewVersion=${{ env.RELEASE_VERSION }}
-
-      - name: Build and test release
-        run: ./mvnw -B clean verify
-
-      - name: Deploy to Fluxzero Packages with GitHub OIDC
+      - name: Refuse any immutable byte conflict
+        run: python3 .github/scripts/release.py preflight
+      - name: Publish the saved files to Fluxzero Packages with GitHub OIDC
         env:
           MAVEN_USERNAME: github-actions
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_SIGNING_PASSPHRASE }}
-          MAVEN_GPG_KEY: ${{ secrets.OSSRH_SIGNING_KEY }}
         run: |
           set +x
           token=$(curl --fail --silent --show-error --get \
@@ -111,18 +134,35 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -er '.value')
           echo "::add-mask::$token"
           export MAVEN_DEPLOY_TOKEN="$token"
-          ./mvnw -B -P sign deploy -DskipTests
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+          python3 .github/scripts/release.py publish
+      - name: Verify exact Packages artifacts, signatures and checksums
+        run: python3 .github/scripts/release.py verify
+      - name: Run an independent Packages consumer with an empty Maven cache
+        run: bash .github/scripts/verify-packages-consumer.sh "$RELEASE_VERSION"
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: v${{ env.RELEASE_VERSION }}
-          name: v${{ env.RELEASE_VERSION }}
-          body: ${{ needs.determine-version.outputs.changelog }}
-          files: |
-            target/json-doclet-${{ env.RELEASE_VERSION }}.jar
-            src/main/resources/json-doclet.schema.json
-          draft: false
-          prerelease: false
+          name: verified-release-assets
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: true
+
+  github-release:
+    needs: [version, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-release-assets
+          path: release-assets
+      - name: Complete the GitHub release without replacing existing assets
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/release.py github
