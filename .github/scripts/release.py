@@ -155,7 +155,7 @@ def preflight(directory, version, source, fetch=remote_bytes):
 def publish_arguments(directory, version):
     paths = artifact_paths(version)
     pom, jar, sources, javadoc = [str(directory.resolve() / p) for p in paths]
-    return ['./mvnw', '-B', 'org.apache.maven.plugins:maven-deploy-plugin:3.1.4:deploy-file',
+    return ['./mvnw', '-B', 'org.apache.maven.plugins:maven-deploy-plugin:3.2.0:deploy-file',
             '-DrepositoryId=fluxzero', '-Durl=' + UPLOAD, '-DgeneratePom=false',
             '-Dfile=' + jar, '-DpomFile=' + pom,
             '-Dfiles=' + ','.join([sources, javadoc, pom + '.asc', jar + '.asc',

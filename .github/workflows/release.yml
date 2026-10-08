@@ -21,17 +21,17 @@ jobs:
     outputs:
       version: ${{ steps.reserve.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Suggest semantic version
         id: bump
-        uses: mathieudutour/github-tag-action@v6.2
+        uses: mathieudutour/github-tag-action@af99e60ce8132224b8e6ebab5023449fe256ed46 # v7
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           dry_run: true
           default_bump: patch
-          custom_release_rules: '[{"type":"feat","release":"minor"}]'
+          custom_release_rules: feat:minor
           release_branches: main
       - name: Reserve a free immutable version
         id: reserve
@@ -51,7 +51,7 @@ jobs:
     env:
       RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Locate the original signed publication on reruns
         id: saved
         env:
@@ -68,7 +68,7 @@ jobs:
       - name: Refuse rebuilding a partially published version
         if: steps.saved.outputs.exists != 'true'
         run: python3 .github/scripts/release.py assert-unpublished
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         if: steps.saved.outputs.exists != 'true'
         with:
           distribution: temurin
@@ -92,7 +92,7 @@ jobs:
         run: python3 .github/scripts/release.py validate
       - name: Preserve signed files before any public upload
         if: steps.saved.outputs.exists != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: signed-publication
           path: publication/
@@ -108,19 +108,19 @@ jobs:
     env:
       RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: signed-publication
           path: publication
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: 21
           cache: maven
           server-id: fluxzero
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_DEPLOY_TOKEN
+          server-username-env-var: MAVEN_USERNAME
+          server-password-env-var: MAVEN_DEPLOY_TOKEN
       - name: Refuse any immutable byte conflict
         run: python3 .github/scripts/release.py preflight
       - name: Publish the saved files to Fluxzero Packages with GitHub OIDC
@@ -139,7 +139,7 @@ jobs:
         run: python3 .github/scripts/release.py verify
       - name: Run an independent Packages consumer with an empty Maven cache
         run: bash .github/scripts/verify-packages-consumer.sh "$RELEASE_VERSION"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: verified-release-assets
           path: release-assets/
@@ -155,10 +155,10 @@ jobs:
     env:
       RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: verified-release-assets
           path: release-assets
