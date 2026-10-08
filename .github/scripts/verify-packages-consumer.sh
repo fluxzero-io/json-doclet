@@ -17,7 +17,7 @@ cat > "$consumer_dir/pom.xml" <<'XML'
 XML
 "$project_root/mvnw" -B -f "$consumer_dir/pom.xml" \
   "-Dmaven.repo.local=$consumer_dir/cache" "-Ddoclet.repository=$repository" "-Ddoclet.version=$version" \
-  org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies \
+  org.apache.maven.plugins:maven-dependency-plugin:3.11.0:copy-dependencies \
   -DincludeArtifactIds=json-doclet "-DoutputDirectory=$consumer_dir/lib"
 artifact_dir="$consumer_dir/cache/io/fluxzero/tools/json-doclet/$version"
 python3 "$project_root/.github/scripts/verify_maven_origin.py" \

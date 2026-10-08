@@ -6,6 +6,8 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 10
     groups:
+      junit:
+        patterns: ["org.junit.*"]
       maven-minor-and-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]

@@ -187,6 +187,9 @@ A smoke test lives at `src/test/java/io/fluxzero/jsondoclet/JsonDocletSmokeTest.
 mvn test
 ```
 
+The smoke test validates every generated JSON file against the published
+Draft 2020-12 schema with json-sKema and checks that invalid output is rejected.
+
 If you intentionally change the JSON schema, regenerate the golden fixtures with:
 
 ```bash

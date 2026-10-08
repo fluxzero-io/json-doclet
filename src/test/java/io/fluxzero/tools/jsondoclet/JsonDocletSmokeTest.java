@@ -2,11 +2,12 @@ package io.fluxzero.tools.jsondoclet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -18,10 +19,11 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
-import org.everit.json.schema.Schema;
-import org.everit.json.schema.loader.SchemaLoader;
-import org.json.JSONObject;
-import org.json.JSONTokener;
+import com.github.erosb.jsonsKema.JsonObject;
+import com.github.erosb.jsonsKema.JsonParser;
+import com.github.erosb.jsonsKema.Schema;
+import com.github.erosb.jsonsKema.SchemaLoader;
+import com.github.erosb.jsonsKema.Validator;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -65,6 +67,19 @@ class JsonDocletSmokeTest {
         }
 
         assertJsonOutputsMatch(EXPECTED_ROOT, outputDir);
+    }
+
+    @Test
+    void rejectsInvalidOutputAgainstDraft202012Schema() {
+        for (String invalid : List.of(
+                "{}",
+                "[]",
+                "{\"files\":42,\"subdirectories\":[]}",
+                "{\"files\":[],\"subdirectories\":[],\"unexpected\":true}",
+                "{\"files\":[{\"file\":\"X.json\",\"name\":\"X\",\"qualifiedName\":42,\"kind\":\"class\"}],\"subdirectories\":[]}")) {
+            assertNotNull(Validator.forSchema(OUTPUT_SCHEMA).validate(new JsonParser(invalid).parse()),
+                    "Schema must reject invalid output: " + invalid);
+        }
     }
 
     private List<Path> collectJavaFiles(Path sourceDir) throws IOException {
@@ -158,19 +173,17 @@ class JsonDocletSmokeTest {
             if (stream == null) {
                 throw new IllegalStateException("json-doclet.schema.json resource is missing");
             }
-            JSONObject schemaJson = new JSONObject(new JSONTokener(stream));
-            return SchemaLoader.load(schemaJson);
+            var schemaJson = new JsonParser(new String(stream.readAllBytes(), StandardCharsets.UTF_8)).parse();
+            return new SchemaLoader(schemaJson).load();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load JSON schema", e);
         }
     }
 
     private void validateAgainstSchema(Path relativePath, String jsonContent) {
-        Object parsed = new JSONTokener(jsonContent).nextValue();
-        if (parsed instanceof JSONObject object) {
-            OUTPUT_SCHEMA.validate(object);
-        } else {
-            fail("Expected JSON object but found " + parsed.getClass().getSimpleName() + " for " + relativePath);
-        }
+        var parsed = new JsonParser(jsonContent).parse();
+        assertTrue(parsed instanceof JsonObject, "Expected JSON object for " + relativePath);
+        var failure = Validator.forSchema(OUTPUT_SCHEMA).validate(parsed);
+        assertNull(failure, () -> "Schema violation for " + relativePath + ": " + failure);
     }
 }
