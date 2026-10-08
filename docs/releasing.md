@@ -46,6 +46,11 @@ file has exactly the original bytes; a mismatch stops before publication. A
 partial GitHub Release similarly resumes missing asset uploads without replacing
 existing files.
 
+The independent consumer uses a fresh Maven cache and verifies both JAR and
+POM origins. It recognizes legacy `fluxzero` tracking and the newer URL-qualified
+`fluxzero-<sha1(repository URL)>` entries, checking the exact configured URL hash.
+Unrelated repositories, missing origins and incomplete artifact pairs fail verification.
+
 Saved publication artifacts are retained for 90 days. If they have expired and
 any file is already public, the workflow refuses to rebuild that version. Start
 a **new manual run** on `main` to reserve the next free version. Its new run ID
