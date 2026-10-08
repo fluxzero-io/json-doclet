@@ -20,13 +20,8 @@ XML
   org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies \
   -DincludeArtifactIds=json-doclet "-DoutputDirectory=$consumer_dir/lib"
 artifact_dir="$consumer_dir/cache/io/fluxzero/tools/json-doclet/$version"
-python3 - "$artifact_dir/_remote.repositories" "$version" <<'PY'
-from pathlib import Path
-import sys
-origins = Path(sys.argv[1]).read_text()
-for extension in ('jar', 'pom'):
-    assert f'json-doclet-{sys.argv[2]}.{extension}>fluxzero=' in origins, origins
-PY
+python3 "$project_root/.github/scripts/verify_maven_origin.py" \
+  "$artifact_dir/_remote.repositories" "$version" "$repository"
 cat > "$consumer_dir/Example.java" <<'JAVA'
 /** Independent published doclet consumer. */
 public class Example {
