@@ -92,7 +92,7 @@ jobs:
         run: python3 .github/scripts/release.py validate
       - name: Preserve signed files before any public upload
         if: steps.saved.outputs.exists != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: signed-publication
           path: publication/
@@ -139,7 +139,7 @@ jobs:
         run: python3 .github/scripts/release.py verify
       - name: Run an independent Packages consumer with an empty Maven cache
         run: bash .github/scripts/verify-packages-consumer.sh "$RELEASE_VERSION"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: verified-release-assets
           path: release-assets/
